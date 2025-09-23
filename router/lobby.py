@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel
 import uuid
-from .. import models
-from ..database import get_db
+import models
+from database import get_db
 
 router = APIRouter(prefix="/lobbies", tags=["lobbies"])
 

@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Response, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Response, Request, APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 
-app = FastAPI()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 SECRET_KEY = "secret_key"
 ALGORITHM = "HS256"
@@ -43,7 +43,7 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return username
 
-@app.post("/register")
+@router.post("/register")
 def register(user: User):
     if user.username in fake_users_db:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -51,7 +51,7 @@ def register(user: User):
     fake_users_db[user.username] = {"username": user.username, "hashed_pw": hashed_pw}
     return {"msg": "User registered"}
 
-@app.post("/login")
+@router.post("/login")
 def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
     user = fake_users_db.get(form_data.username)
     if not user or not verify_password(form_data.password, user["hashed_pw"]):
@@ -63,11 +63,11 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
     response.set_cookie(key="access_token", value=access_token, httponly=True)
     return {"msg": "Logged in"}
 
-@app.get("/me")
+@router.get("/me")
 def read_users_me(current_user: str = Depends(get_current_user)):
     return {"username": current_user}
 
-@app.post("/logout")
+@router.post("/logout")
 def logout(response: Response):
     response.delete_cookie("access_token")
     return {"msg": "Logged out"}
