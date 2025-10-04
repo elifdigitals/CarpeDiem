@@ -1,0 +1,6 @@
+*.c       text eol=lf
+*.cc      text eol=lf
+*.cmake   text eol=lf
+*.swift   text eol=lf
+*.lock    text eol=lf
+*.dart    text eol=lf
