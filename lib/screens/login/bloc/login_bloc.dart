@@ -1,11 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:equatable/equatable.dart';
+import 'login_event.dart';
+import 'login_state.dart';
 import 'package:app/exceptions/form_exceptions.dart';
 import 'package:app/model/user_model.dart';
 import 'package:app/services/auth_service.dart';
-
-part 'login_event.dart';
-part 'login_state.dart';
 
 class LoginBloc extends Bloc<LoginEvent, LoginState> {
   LoginBloc() : super(LoginFormState()) {
@@ -16,9 +14,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           email: event.email,
           password: event.password,
         );
-        emit(LoginSuccessState(
-          user,
-        ));
+        emit(LoginSuccessState(user));
       } on FormGeneralException catch (e) {
         emit(LoginErrorState(e));
       } on FormFieldsException catch (e) {

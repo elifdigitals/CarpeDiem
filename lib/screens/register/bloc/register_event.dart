@@ -1,4 +1,4 @@
-part of 'register_bloc.dart';
+import 'package:equatable/equatable.dart';
 
 abstract class RegisterEvent extends Equatable {
   const RegisterEvent();

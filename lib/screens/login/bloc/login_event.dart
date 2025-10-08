@@ -1,7 +1,10 @@
-part of 'login_bloc.dart';
+import 'package:equatable/equatable.dart';
 
 abstract class LoginEvent extends Equatable {
   const LoginEvent();
+
+  @override
+  List<Object?> get props => [];
 }
 
 class LoginRequestEvent extends LoginEvent {

@@ -55,9 +55,9 @@ class User {
     await Future.delayed(
       Duration(
         milliseconds:
-            jwtData['exp'] * 1000 - DateTime.now().millisecondsSinceEpoch,
+        jwtData['exp'] * 1000 - DateTime.now().millisecondsSinceEpoch,
       ),
-      () async {
+          () async {
         try {
           await AuthService.refreshToken(this);
         } catch (e) {}

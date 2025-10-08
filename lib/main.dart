@@ -6,9 +6,12 @@ import 'dart:io';
 import 'screens/login/login_page.dart';
 import 'screens/lobby/lobby_create_page.dart';
 import 'screens/lobby/lobby_list_page.dart';
-//3
+
+import 'repositories/settings_repository.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final settings = await SettingsRepository().loadSettings();
   final cameras = await availableCameras();
   final backCamera = cameras.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.back,
@@ -19,6 +22,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  // final AppSettings initialSettings;
   final CameraDescription camera;
 
   const MyApp({super.key, required this.camera});

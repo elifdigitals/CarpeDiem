@@ -1,8 +1,8 @@
 class HelperService {
-  static const String host = "10.0.3.2";
+  static const String host = "10.0.2.2";
   static const int port = 8000;
   static const String scheme = "http";
-  static const String apiPath = "/api/";
+  static const String apiPath = "";
 
   static Uri buildUri(String path) {
     return Uri(
@@ -11,6 +11,7 @@ class HelperService {
       port: port,
       path: apiPath + path,
     );
+
   }
 
   static Map<String, String> buildHeaders({String? accessToken}) {

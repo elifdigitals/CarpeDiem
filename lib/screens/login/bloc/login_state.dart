@@ -1,4 +1,5 @@
-part of 'login_bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:app/model/user_model.dart';
 
 abstract class LoginState extends Equatable {
   const LoginState();

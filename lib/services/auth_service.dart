@@ -10,8 +10,8 @@ import 'package:app/services/helper_service.dart';
 import 'package:app/services/secure_storage_service.dart';
 
 class AuthService {
-  static const String loginPath = 'token/';
-  static const String registerPath = 'users/';
+  static const String loginPath = 'auth/login';
+  static const String registerPath = 'auth/register';
   static const String refreshPath = 'token/refresh/';
   static const String verifyPath = 'token/verify/';
 
@@ -34,6 +34,7 @@ class AuthService {
   }
 
   static Future<void> refreshToken(User user) async {
+    print(HelperService.buildUri(loginPath));
     final response = await http.post(
       HelperService.buildUri(refreshPath),
       headers: HelperService.buildHeaders(),
@@ -42,7 +43,7 @@ class AuthService {
           'refresh': user.refreshToken,
         },
       ),
-    );
+    ).timeout(Duration(seconds: 10));
 
     final statusType = (response.statusCode / 100).floor() * 100;
     switch (statusType) {
@@ -64,17 +65,27 @@ class AuthService {
     required String password,
     required String username
   }) async {
+    print(HelperService.buildUri(registerPath));
+    print(jsonEncode({
+      'email': email,
+      'password': password,
+      'username': username
+    }));
     final response = await http.post(
-      HelperService.buildUri(loginPath),
+
+      HelperService.buildUri(registerPath),
       headers: HelperService.buildHeaders(),
       body: jsonEncode(
         {
+          'username': username,
           'email': email,
-          'password': password,
-          'username': username
+          'password': password
+
         },
       ),
-    );
+    ).timeout(Duration(seconds: 10));
+    print('statusCode: ${response.statusCode}');
+    print('body: ${response.body}');
 
     final statusType = (response.statusCode / 100).floor() * 100;
     switch (statusType) {
@@ -105,7 +116,13 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    print(HelperService.buildUri(loginPath));
+    print(jsonEncode({
+      'email': email,
+      'password': password,
+    }));
     final response = await http.post(
+
       HelperService.buildUri(loginPath),
       headers: HelperService.buildHeaders(),
       body: jsonEncode(
@@ -114,9 +131,11 @@ class AuthService {
           'password': password,
         },
       ),
-    );
+    ).timeout(Duration(seconds: 10));
 
     final statusType = (response.statusCode / 100).floor() * 100;
+    print('statusCode: ${response.statusCode}');
+    print('body: ${response.body}');
     switch (statusType) {
       case 200:
         final json = jsonDecode(response.body);
