@@ -6,12 +6,12 @@ import 'dart:io';
 import 'screens/login/login_page.dart';
 import 'screens/lobby/lobby_create_page.dart';
 import 'screens/lobby/lobby_list_page.dart';
-
-import 'repositories/settings_repository.dart';
+import 'services/auth_service.dart';
+import 'model/user_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final settings = await SettingsRepository().loadSettings();
+  // final settings = await SettingsRepository().loadSettings();
   final cameras = await availableCameras();
   final backCamera = cameras.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.back,
@@ -35,15 +35,91 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: MyHomePage(camera: camera),
+      home: AuthWrapper(camera: camera),
+      // home: MyHomePage(camera: camera)
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  final CameraDescription camera;
+
+  const AuthWrapper({super.key, required this.camera});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  User? _currentUser;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    try {
+      final user = await AuthService.loadUser();
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _currentUser = null;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onLoginSuccess(User user) {
+    setState(() {
+      _currentUser = user;
+    });
+  }
+
+  void _onLogout() {
+    setState(() {
+      _currentUser = null;
+    });
+    AuthService.logout();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_currentUser == null) {
+      return LoginPage(onLoginSuccess: _onLoginSuccess);
+    }
+
+    return MyHomePage(
+      camera: widget.camera,
+      user: _currentUser!,
+      onLogout: _onLogout,
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   final CameraDescription camera;
-
-  const MyHomePage({super.key, required this.camera});
+  final User user;
+  final VoidCallback onLogout;
+  const MyHomePage({
+    super.key,
+    required this.camera,
+    required this.user,
+    required this.onLogout,
+  });
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -226,10 +302,47 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('CarpeDiem'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle, size: 20),
-            tooltip: "Sign in",
-            onPressed: _openLoginPage,
+          PopupMenuButton<String>(
+            icon: CircleAvatar(
+              child: Text(widget.user.username[0].toUpperCase()),
+            ),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    const Icon(Icons.person),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.user.username),
+                        Text(
+                          widget.user.email,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    const Icon(Icons.logout),
+                    const SizedBox(width: 8),
+                    const Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'logout') {
+                widget.onLogout();
+              }
+            },
           ),
         ],
       ),

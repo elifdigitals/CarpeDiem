@@ -29,7 +29,7 @@ class AuthService {
   static void saveUser(User user) async {
     await SecureStorageService.storage.write(
       key: SecureStorageService.userKey,
-      value: user.toJson(),
+      value: jsonEncode(user.toJson()),
     );
   }
 
@@ -65,47 +65,60 @@ class AuthService {
     required String password,
     required String username
   }) async {
-    print(HelperService.buildUri(registerPath));
-    print(jsonEncode({
+    final uri = HelperService.buildUri(registerPath);
+    final headers = HelperService.buildHeaders();
+    final body = jsonEncode({
+      'username': username,
       'email': email,
-      'password': password,
-      'username': username
-    }));
-    final response = await http.post(
+      'password': password
+    });
 
-      HelperService.buildUri(registerPath),
-      headers: HelperService.buildHeaders(),
-      body: jsonEncode(
-        {
-          'username': username,
-          'email': email,
-          'password': password
+    print('=== REGISTER REQUEST ===');
+    print('URL: $uri');
+    print('Headers: $headers');
+    print('Body: $body');
 
-        },
-      ),
-    ).timeout(Duration(seconds: 10));
-    print('statusCode: ${response.statusCode}');
-    print('body: ${response.body}');
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: body,
+      ).timeout(Duration(seconds: 10));
 
-    final statusType = (response.statusCode / 100).floor() * 100;
-    switch (statusType) {
-      case 200:
-        final json = jsonDecode(response.body);
-        final user = User.fromJson(json);
+      print('=== REGISTER RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Headers: ${response.headers}');
+      print('Body: ${response.body}');
 
-        saveUser(user);
+      final statusType = (response.statusCode / 100).floor() * 100;
+      switch (statusType) {
+        case 200:
+        case 201:
+          final json = jsonDecode(response.body);
+          final user = User.fromJson(json);
+          saveUser(user);
+          return user;
 
-        return user;
-      case 400:
-        final json = jsonDecode(response.body);
-        throw handleFormErrors(json);
-      case 300:
-      case 500:
-      default:
-        throw FormGeneralException(message: 'Error contacting the server!');
+        case 400:
+          final json = jsonDecode(response.body);
+          print('=== 400 ERROR DETAILS ===');
+          print('Error JSON: $json');
+          throw handleFormErrors(json);
+
+        case 300:
+        case 500:
+        default:
+          print('=== SERVER ERROR ===');
+          print('Status: ${response.statusCode}');
+          print('Body: ${response.body}');
+          throw FormGeneralException(message: 'Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('=== NETWORK ERROR ===');
+      print('Error: $e');
+      rethrow;
     }
   }
-
   static Future<void> logout() async {
     await SecureStorageService.storage.delete(
       key: SecureStorageService.userKey,
@@ -139,15 +152,21 @@ class AuthService {
     switch (statusType) {
       case 200:
         final json = jsonDecode(response.body);
+
+        if (json.containsKey('access')) {
+          json['access_token'] = json['access'];
+        }
+
         final user = User.fromJson(json);
-
         saveUser(user);
-
         return user;
+
       case 400:
         final json = jsonDecode(response.body);
         throw handleFormErrors(json);
+
       case 300:
+
       case 500:
       default:
         throw FormGeneralException(message: 'Error contacting the server!');

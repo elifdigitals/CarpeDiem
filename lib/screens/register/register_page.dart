@@ -19,10 +19,29 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
 
+  String _getFriendlyErrorMessage(Object? error) {
+    if (error is FormGeneralException) {
+      final msg = error.message.toLowerCase();
+      if (msg.contains('email') && msg.contains('registered')) {
+        return 'Такой email уже зарегистрирован';
+      } else if (msg.contains('username')) {
+        return 'Имя пользователя уже занято';
+      } else if (msg.contains('password')) {
+        return 'Слишком слабый пароль';
+      } else {
+        return 'Произошла ошибка. Повторите попытку.';
+      }
+    // } else if (error is TimeoutException) {
+    //   return 'Превышено время ожидания сервера';
+    } else {
+      return 'Неизвестная ошибка. Попробуйте позже.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Registration")),
+      appBar: AppBar(title: const Text("Регистрация")),
       body: BlocProvider(
         create: (_) => RegisterBloc(),
         child: BlocConsumer<RegisterBloc, RegisterState>(
@@ -30,18 +49,16 @@ class _RegisterPageState extends State<RegisterPage> {
             if (state is RegisterSuccessState) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("Registration successful"),
+                  content: Text("Регистрация прошла успешно 🎉"),
                   backgroundColor: Colors.green,
                 ),
               );
               Navigator.pop(context);
             } else if (state is RegisterErrorState) {
+              final message = _getFriendlyErrorMessage(state.exception);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    "Error: ${state.exception}",
-                    style: const TextStyle(color: Colors.white),
-                  ),
+                  content: Text(message, style: const TextStyle(color: Colors.white)),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -62,11 +79,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
-                        labelText: "Username",
+                        labelText: "Имя пользователя",
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) =>
-                      value!.isEmpty ? "Введите имя" : null,
+                      value!.isEmpty ? "Введите имя пользователя" : null,
                     ),
                     const SizedBox(height: 12),
 
@@ -86,7 +103,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
-                        labelText: "Password",
+                        labelText: "Пароль",
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -116,7 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           );
                         }
                       },
-                      child: const Text("Register"),
+                      child: const Text("Зарегистрироваться"),
                     ),
                   ],
                 ),
