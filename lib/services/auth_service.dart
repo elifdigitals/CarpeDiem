@@ -14,6 +14,7 @@ class AuthService {
   static const String registerPath = 'auth/register';
   static const String refreshPath = 'token/refresh/';
   static const String verifyPath = 'token/verify/';
+  static const String lobbyPath = 'lobby/lobby/';
 
   static Future<User> loadUser() async {
     final json = await SecureStorageService.storage.read(
