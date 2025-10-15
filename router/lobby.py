@@ -9,11 +9,11 @@ from database import get_db
 router = APIRouter(prefix="/lobbies", tags=["lobbies"])
 
 class LobbyCreate(BaseModel):
-    host_id: str
+    host_id: int
     mode: str = "default"
 
 class LobbyJoin(BaseModel):
-    user_id: str
+    user_id: int
 
 @router.post("/")
 async def create_lobby(data: LobbyCreate, db: AsyncSession = Depends(get_db)):
@@ -24,10 +24,10 @@ async def create_lobby(data: LobbyCreate, db: AsyncSession = Depends(get_db)):
     player = models.LobbyPlayer(lobby_id=lobby.id, user_id=data.host_id)
     db.add(player)
     await db.commit()
-    return {"lobby_id": str(lobby.id), "host": data.host_id, "mode": data.mode}
+    return {"lobby_id": int(lobby.id), "host": data.host_id, "mode": data.mode}
 
 @router.post("/{lobby_id}/join")
-async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(get_db)):
+async def join_lobby(lobby_id: int, data: LobbyJoin, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.Lobby).where(models.Lobby.id == uuid.UUID(lobby_id)))
     lobby = res.scalar_one_or_none()
     if not lobby:
@@ -35,10 +35,10 @@ async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(
     player = models.LobbyPlayer(lobby_id=lobby.id, user_id=data.user_id)
     db.add(player)
     await db.commit()
-    return {"lobby_id": str(lobby.id), "joined": data.user_id}
+    return {"lobby_id": int(lobby.id), "joined": data.user_id}
 
 @router.get("/{lobby_id}")
-async def get_lobby(lobby_id: str, db: AsyncSession = Depends(get_db)):
+async def get_lobby(lobby_id: int, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.Lobby).where(models.Lobby.id == uuid.UUID(lobby_id)))
     lobby = res.scalar_one_or_none()
     if not lobby:
