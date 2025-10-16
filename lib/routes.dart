@@ -8,20 +8,44 @@ import 'screens/lobby/lobby_create_page.dart';
 import 'screens/lobby/lobby_list_page.dart';
 import 'services/auth_service.dart';
 import 'model/user_model.dart';
-import 'routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // final settings = await SettingsRepository().loadSettings();
   final cameras = await availableCameras();
   final backCamera = cameras.firstWhere(
-    (camera) => camera.lensDirection == CameraLensDirection.back,
+        (camera) => camera.lensDirection == CameraLensDirection.back,
     orElse: () => cameras.first,
   );
 
   runApp(MyApp(camera: backCamera));
 }
 
+class AppRoutes {
+  static Route<dynamic> generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (_) => const MyApp(camera: CameraDescription(name: 'default', lensDirection: CameraLensDirection.back, sensorOrientation: 0)));
+      case '/login':
+        return MaterialPageRoute(builder: (_) => const LoginPage());
+      case '/lobbyCreate':
+        return MaterialPageRoute(builder: (_) => const LobbyCreatePage());
+      case '/lobbyList':
+        final args = settings.arguments as List<Map<String, dynamic>>;
+        return MaterialPageRoute(builder: (_) => LobbyListPage(lobbies: args));
+      default:
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: Center(
+              child: Text('No route defined for ${settings.name}'),
+            ),
+          ),
+        );
+    }
+  }
+}
 class MyApp extends StatelessWidget {
+  // final AppSettings initialSettings;
   final CameraDescription camera;
 
   const MyApp({super.key, required this.camera});
@@ -34,8 +58,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      onGenerateRoute: AppRoutes.generateRoute,
       home: AuthWrapper(camera: camera),
+      // home: MyHomePage(camera: camera)
     );
   }
 }
@@ -177,10 +201,11 @@ class _MyHomePageState extends State<MyHomePage> {
       await _initializeControllerFuture;
       if (!mounted) return;
 
-      Navigator.pushNamed(
+      Navigator.push(
         context,
-        '/cameraPreview',
-        arguments: {'controller': _controller!},
+        MaterialPageRoute(
+          builder: (context) => CameraPreviewPage(controller: _controller!),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -191,12 +216,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _openLoginPage() {
-    Navigator.pushNamed(context, '/login');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
   }
 
   void _createLobby() async {
-    final result = await Navigator.pushNamed(context, '/createLobby');
-    if (result != null && result is Map<String, dynamic>) {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LobbyCreatePage()),
+    );
+
+    if (result != null) {
       setState(() {
         _lobbies.insert(0, result);
       });
@@ -208,10 +240,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _viewAllLobbies() {
-    Navigator.pushNamed(
+    Navigator.push(
       context,
-      '/lobbyList',
-      arguments: {'lobbies': _lobbies},
+      MaterialPageRoute(
+        builder: (context) => LobbyListPage(lobbies: _lobbies),
+      ),
     );
   }
 
@@ -359,6 +392,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
+
           if (_lobbies.isEmpty)
             const Expanded(
               child: Center(
