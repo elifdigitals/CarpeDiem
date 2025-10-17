@@ -12,6 +12,8 @@ import 'package:app/services/secure_storage_service.dart';
 class AuthService {
   static const String loginPath = 'auth/login';
   static const String registerPath = 'auth/register';
+  static const String passwordResetPath = 'auth/password/reset/';
+  static const String passwordResetConfirmPath = 'auth/password/reset/confirm/';
   static const String refreshPath = 'token/refresh/';
   static const String verifyPath = 'token/verify/';
   static const String lobbyPath = 'lobby/lobby/';
@@ -120,6 +122,100 @@ class AuthService {
       rethrow;
     }
   }
+
+  static Future<void> requestPasswordRecovery({
+    required String email,
+  }) async {
+    final uri = HelperService.buildUri(passwordResetPath);
+    final headers = HelperService.buildHeaders();
+    final body = jsonEncode({'email': email});
+
+    print('=== PASSWORD RESET REQUEST ===');
+    print('URL: $uri');
+    print('Body: $body');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: body,
+      ).timeout(Duration(seconds: 10));
+
+      print('=== PASSWORD RESET RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Body: ${response.body}');
+
+      final statusType = (response.statusCode / 100).floor() * 100;
+      switch (statusType) {
+        case 200:
+        case 201:
+          return;
+        case 400:
+          final json = jsonDecode(response.body);
+          throw handleFormErrors(json);
+        case 300:
+        case 500:
+        default:
+          throw FormGeneralException(message: 'Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('=== NETWORK ERROR ===');
+      print('Error: $e');
+      rethrow;
+    }
+  }
+
+  
+  static Future<void> confirmPasswordRecovery({
+    required String uid,
+    required String token,
+    required String newPassword,
+  }) async {
+    final uri = HelperService.buildUri(passwordResetConfirmPath);
+    final headers = HelperService.buildHeaders();
+    final body = jsonEncode({
+      'uid': uid,
+      'token': token,
+      'new_password1': newPassword,
+      'new_password2': newPassword,
+    });
+
+    print('=== PASSWORD RESET CONFIRM REQUEST ===');
+    print('URL: $uri');
+    print('Body: $body');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: body,
+      ).timeout(Duration(seconds: 10));
+
+      print('=== PASSWORD RESET CONFIRM RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Body: ${response.body}');
+
+      final statusType = (response.statusCode / 100).floor() * 100;
+      switch (statusType) {
+        case 200:
+        case 201:
+          return;
+        case 400:
+          final json = jsonDecode(response.body);
+          throw handleFormErrors(json);
+        case 300:
+        case 500:
+        default:
+          throw FormGeneralException(message: 'Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('=== NETWORK ERROR ===');
+      print('Error: $e');
+      rethrow;
+  }
+    }
+
+
   static Future<void> logout() async {
     await SecureStorageService.storage.delete(
       key: SecureStorageService.userKey,
@@ -173,4 +269,6 @@ class AuthService {
         throw FormGeneralException(message: 'Error contacting the server!');
     }
   }
+
+
 }
