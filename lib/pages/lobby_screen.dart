@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
+import 'profile_screen.dart';
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -59,7 +60,23 @@ class LobbyScreen extends StatelessWidget {
                     ],
                   ),
                   IconButton(
-                    onPressed: null, // TODO: profile
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProfileScreen(
+                            onBack: () => Navigator.pop(context),
+                            onStore: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Магазин (премиум) выбран'),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
                     icon: Text('👤', style: TextStyle(fontSize: 24)),
                   ),
                 ],
