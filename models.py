@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, Integer
+from sqlalchemy import Column, String, ForeignKey, Integer, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -11,6 +11,19 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_pw = Column(String)
+
+class UserProfile(Base):
+    __tablename__ = "profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    full_name = Column(String, nullable=False)
+    birth_date = Column(Date, nullable=False)
+    location = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    photo_path = Column(String, nullable=False)
+
+    user = relationship("User", backref="profile")
 
 class Lobby(Base):
     __tablename__ = "lobbies"

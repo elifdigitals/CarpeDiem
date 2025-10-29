@@ -9,7 +9,7 @@ import numpy as np
 import json
 import os
 
-from face_recognation.detector import encode_face, compare_faces
+# from face_recognation.detector import encode_face, compare_faces
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 

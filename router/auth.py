@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
 from jose import jwt
+from fastapi import Request
+import requests
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
@@ -69,3 +71,9 @@ async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(
         "username": user.username,
         "email": user.email
     }
+
+@router.get("/location")
+async def get_location(request: Request):
+    client_ip = request.client.host
+    data = requests.get(f"https://ipinfo.io/{client_ip}/json").json()
+    return {"ip": client_ip, "location": data.get("loc")}
