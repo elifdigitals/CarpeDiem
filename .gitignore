@@ -1,0 +1,8 @@
+.idea
+.venv
+venv
+env
+.env
+dataset/model.pt
+*.dll
+*.dat
