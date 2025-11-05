@@ -1,8 +1,10 @@
+from django.http import FileResponse
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse, FileResponse
-from sqlalchemy.future import select
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from PIL import Image
+from io import BytesIO
 import numpy as np
 import json
 import os
@@ -57,8 +59,8 @@ def save_new_face(name: str, encoding: np.ndarray):
 
 @router.post("/upload")
 async def upload_photo(
-    lobby_id: int = Form(...),
-    user_id: int = Form(...),
+    lobby_id: str = Form(...),
+    user_id: str = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
@@ -91,7 +93,7 @@ async def upload_photo(
 
     photo = models.Photo(
         user_id=user_id,
-        lobby_id=lobby_id,
+        lobby_id=uuid.UUID(lobby_id),
         file_path=file_path,
         status=status,
         recognized_person=person
@@ -127,7 +129,7 @@ async def get_lobby_photos(lobby_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{photo_id}/file")
-async def get_photo_file(photo_id: int, db: AsyncSession = Depends(get_db)):
+async def get_photo_file(photo_id: str, db: AsyncSession = Depends(get_db)):
     res = await db.execute(
         select(models.Photo).where(models.Photo.id == photo_id)
     )
