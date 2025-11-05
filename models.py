@@ -1,3 +1,4 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, Date
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -46,4 +47,3 @@ class Photo(Base):
     status = Column(String, default="unknown")
     recognized_person = Column(String, nullable=True)
     uploaded_at = Column(String, default=datetime.utcnow)
-
