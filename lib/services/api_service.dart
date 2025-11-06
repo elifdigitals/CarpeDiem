@@ -48,4 +48,15 @@ class ApiService {
       throw Exception(error['detail'] ?? 'Registration failed');
     }
   }
+
+  static Future<String> getLobbies() async {
+    final uri = Uri.parse('$baseUrl/lobbies');
+    final response = await http.(uri);
+
+    if (response.statusCode == 200) {
+          print('Response data: ${response.body}');
+        } else {
+          print('Request failed with status: ${response.statusCode}.');
+        }
+  }
 }
