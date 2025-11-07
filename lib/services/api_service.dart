@@ -58,5 +58,29 @@ class ApiService {
         } else {
           print('Request failed with status: ${response.statusCode}.');
         }
+Future<void> createLobby({
+  required String baseUrl,
+  required String lobbyName,
+  required String selectedMode,
+  required int timeLimit,
+}) async {
+  final url = Uri.parse('$baseUrl/lobbies');
+
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'lobbyName': lobbyName,
+      'selectedMode': selectedMode,
+      'timeLimit': timeLimit,
+    }),
+  );
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    print('Лобби успешно создано: ${response.body}');
+  } else {
+    print('Ошибка: ${response.statusCode} — ${response.body}');
   }
 }
