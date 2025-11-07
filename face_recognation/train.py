@@ -10,6 +10,7 @@ from tqdm import tqdm
 from face_recognation.model import FaceClassifier
 
 
+
 def train(data_dir: str, save_path: str, epochs: int = 10, batch_size: int = 32, lr: float = 1e-4, device: str = None):
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([
@@ -67,6 +68,7 @@ def train(data_dir: str, save_path: str, epochs: int = 10, batch_size: int = 32,
         "classes": dataset.classes
     }, "dataset/model.pt")
     print("Training complete. Model saved to", save_path)
+
 
 
 if __name__ == "__main__":

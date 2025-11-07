@@ -1,4 +1,4 @@
-# from django.http import FileResponse
+from django.http import FileResponse
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
@@ -21,17 +21,16 @@ MODEL_PATH = "dataset/model.pt"
 UPLOAD_DIR = "uploaded_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# ckpt = torch.load("dataset/model.pt", map_location="cpu")
-# classes = ckpt["classes"]
-#
-# recognizer = FaceClassifier(num_classes=len(classes))
-# recognizer.load_state_dict(ckpt["model_state_dict"])
-# recognizer.eval()
+ckpt = torch.load("dataset/model.pt", map_location="cpu")
+classes = ckpt["classes"]
 
-# ckpt = torch.load("dataset/model.pt", map_location="cpu")
-# classes = ckpt["classes"]
-# print(classes)
-recognize = FaceClassifier(num_classes=3)
+recognizer = FaceClassifier(num_classes=len(classes))
+recognizer.load_state_dict(ckpt["model_state_dict"])
+recognizer.eval()
+
+ckpt = torch.load("dataset/model.pt", map_location="cpu")
+classes = ckpt["classes"]
+print(classes)
 
 
 router = APIRouter(prefix="/photos", tags=["photos"])
