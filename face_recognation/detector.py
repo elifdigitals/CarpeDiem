@@ -2,35 +2,34 @@ from io import BytesIO
 from typing import List, Tuple, Optional
 from PIL import Image
 import numpy as np
-import face_recognation
+import face_recognition
+
+
+def load_image(image_bytes: bytes) -> np.ndarray:
+    return face_recognition.load_image_file(BytesIO(image_bytes))
 
 
 def detect_faces(
-    image_bytes: bytes,
+    image: np.ndarray,
     model: str = "hog",
     upsample: int = 1
 ) -> List[Tuple[int, int, int, int]]:
-    image = face_recognition.load_image_file(BytesIO(image_bytes))
-    face_locations = face_recognition.face_locations(
+    return face_recognition.face_locations(
         image,
         number_of_times_to_upsample=upsample,
         model=model
     )
-    return face_locations
 
 
 def extract_faces(
     image_bytes: bytes,
     model: str = "hog"
 ) -> List[Image.Image]:
-    image = face_recognition.load_image_file(BytesIO(image_bytes))
-    face_locations = detect_faces(image_bytes, model=model)
+    image = load_image(image_bytes)
+    locations = detect_faces(image, model=model)
     pil_image = Image.fromarray(image)
 
-    faces = []
-    for (top, right, bottom, left) in face_locations:
-        face = pil_image.crop((left, top, right, bottom))
-        faces.append(face)
+    faces = [pil_image.crop((left, top, right, bottom)) for (top, right, bottom, left) in locations]
     return faces
 
 
@@ -44,14 +43,12 @@ def extract_single_face(
 
 def encode_face(
     image_bytes: bytes,
-
     model: str = "hog"
 ) -> Optional[np.ndarray]:
-    image = face_recognition.load_image_file(BytesIO(image_bytes))
-    encodings = face_recognition.face_encodings(image, model=model)
-    if len(encodings) == 0:
-        return None
-    return encodings[0]
+    image = load_image(image_bytes)
+    face_locations = detect_faces(image, model=model)
+    encodings = face_recognition.face_encodings(image, known_face_locations=face_locations)
+    return encodings[0] if encodings else None
 
 
 def compare_faces(

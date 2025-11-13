@@ -1,59 +1,33 @@
-from django.http import FileResponse
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from PIL import Image
 from io import BytesIO
-import numpy as np
-import json
 import os
 import uuid
 import torch
-from io import BytesIO
+import numpy as np
 
 from database import get_db
-from face_recognation.detector import encode_face, compare_faces
 from face_recognation.model import FaceClassifier
 import models
+
 
 MODEL_PATH = "dataset/model.pt"
 UPLOAD_DIR = "uploaded_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-ckpt = torch.load("dataset/model.pt", map_location="cpu")
+ckpt = torch.load(MODEL_PATH, map_location="cpu")
 classes = ckpt["classes"]
 
 recognizer = FaceClassifier(num_classes=len(classes))
 recognizer.load_state_dict(ckpt["model_state_dict"])
 recognizer.eval()
 
-ckpt = torch.load("dataset/model.pt", map_location="cpu")
-classes = ckpt["classes"]
-print(classes)
-
+print(f"{len(classes)} classes:", classes)
 
 router = APIRouter(prefix="/photos", tags=["photos"])
-
-
-def load_known_faces():
-    if not os.path.exists("face_recognation/known_faces.json"):
-        return {}, []
-    with open("face_recognation/known_faces.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-    names = list(data.keys())
-    encodings = [np.array(v) for v in data.values()]
-    return names, encodings
-
-
-def save_new_face(name: str, encoding: np.ndarray):
-    known_faces, known_encodings = load_known_faces()
-
-    known_faces[name] = encoding.tolist()
-    with open(KNOWN_FACES_PATH, "w", encoding="utf-8") as f:
-        json.dump(known_faces, f, ensure_ascii=False, indent=4)
-
-    return known_faces
 
 
 @router.post("/upload")
@@ -68,20 +42,38 @@ async def upload_photo(
 
     contents = await file.read()
 
-    img = Image.open(BytesIO(contents)).convert("RGB")
+    try:
+        img = Image.open(BytesIO(contents)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image data")
 
-    results = recognizer.predict_from_pil(img, topk=1)
+    transform = torch.nn.Sequential(
+        torch.nn.Identity()
+    )
 
-    if results:
-        matched_name, confidence = results[0]
-        status = "recognized"
-        person = matched_name
-    else:
+    preprocess = torch.hub.load("pytorch/vision", "transforms").Compose([
+        torch.hub.load("pytorch/vision", "transforms").Resize((224, 224)),
+        torch.hub.load("pytorch/vision", "transforms").ToTensor(),
+        torch.hub.load("pytorch/vision", "transforms").Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+    ])
+
+    input_tensor = preprocess(img).unsqueeze(0)
+    with torch.no_grad():
+        logits = recognizer(input_tensor)
+        probs = torch.softmax(logits, dim=1)
+        conf, pred = torch.max(probs, dim=1)
+        confidence = float(conf.item())
+        predicted_class = classes[pred.item()]
+
+    if confidence < 0.75:
         status = "unknown"
         person = None
-        person = str(uuid.uuid4())
-        encoding = recognizer.predict_from_bytes(contents)[0][1]
-        save_new_face(person, encoding)
+    else:
+        status = "recognized"
+        person = predicted_class
 
     file_ext = file.filename.split(".")[-1]
     file_name = f"{uuid.uuid4()}.{file_ext}"
@@ -105,15 +97,14 @@ async def upload_photo(
         "user_id": user_id,
         "status": status,
         "recognized": person,
+        "confidence": confidence,
         "file_path": file_path
     })
 
 
 @router.get("/lobby/{lobby_id}")
-async def get_lobby_photos(lobby_id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(
-        select(models.Photo).where(models.Photo.lobby_id == lobby_id)
-    )
+async def get_lobby_photos(lobby_id: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.Photo).where(models.Photo.lobby_id == lobby_id))
     photos = res.scalars().all()
     return [
         {
@@ -129,14 +120,10 @@ async def get_lobby_photos(lobby_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{photo_id}/file")
 async def get_photo_file(photo_id: str, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(
-        select(models.Photo).where(models.Photo.id == photo_id)
-    )
+    res = await db.execute(select(models.Photo).where(models.Photo.id == photo_id))
     photo = res.scalar_one_or_none()
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     if not os.path.exists(photo.file_path):
         raise HTTPException(status_code=404, detail="File missing on server")
     return FileResponse(photo.file_path, media_type="image/jpeg")
-
-
