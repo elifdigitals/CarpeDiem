@@ -7,7 +7,7 @@ from torchvision import transforms, datasets
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
-from face_recognation.model import FaceClassifier
+from model import FaceClassifier
 
 def train(data_dir, save_path, epochs=10, batch_size=32, lr=1e-4):
     device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -14,7 +14,7 @@ from face_recognation.model import FaceClassifier
 import models
 
 
-MODEL_PATH = "dataset/model.pt"
+MODEL_PATH = "../../Users/Victus/Desktop/qwerty/dataset/model.pt"
 UPLOAD_DIR = "uploaded_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
