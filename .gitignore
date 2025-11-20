@@ -6,3 +6,4 @@ env
 dataset/model.pt
 *.dll
 *.dat
+__pycache__
