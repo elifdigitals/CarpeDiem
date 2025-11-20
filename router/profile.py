@@ -81,13 +81,11 @@ async def update_profile(
     photo: UploadFile = None,
     db: AsyncSession = Depends(get_db)
 ):
-    # Проверяем, что профиль существует
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # Обновляем данные, если они переданы
     if full_name:
         profile.full_name = full_name
     if birth_date:
@@ -100,12 +98,10 @@ async def update_profile(
     if phone:
         profile.phone = phone
 
-    # Обновляем фото, если новое загружено
     if photo:
         filename = f"user_{user_id}_{photo.filename}"
         filepath = os.path.join(UPLOAD_DIR, filename)
 
-        # Удаляем старое фото, если оно есть
         if profile.photo_path and os.path.exists(profile.photo_path):
             os.remove(profile.photo_path)
 

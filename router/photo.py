@@ -14,7 +14,7 @@ from face_recognation.model import FaceClassifier
 import models
 
 
-MODEL_PATH = "../../Users/Victus/Desktop/qwerty/dataset/model.pt"
+MODEL_PATH = "C:/CarpeDiem/dataset/model.pt"
 UPLOAD_DIR = "uploaded_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -100,22 +100,6 @@ async def upload_photo(
         "confidence": confidence,
         "file_path": file_path
     })
-
-
-@router.get("/lobby/{lobby_id}")
-async def get_lobby_photos(lobby_id: str, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.Photo).where(models.Photo.lobby_id == lobby_id))
-    photos = res.scalars().all()
-    return [
-        {
-            "photo_id": p.id,
-            "user_id": p.user_id,
-            "status": p.status,
-            "recognized": p.recognized_person,
-            "file_path": p.file_path
-        }
-        for p in photos
-    ]
 
 
 @router.get("/{photo_id}/file")

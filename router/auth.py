@@ -18,14 +18,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class UserCreate(BaseModel):
     username: str
     email: str
     password: str
 
+
 class UserLogin(BaseModel):
     email: str
     password: str
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -33,11 +36,14 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
+
 def get_password_hash(password):
     return pwd_context.hash(password)
+
 
 @router.post("/register")
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -51,6 +57,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(db_user)
     return {"msg": "User registered", "user_id": db_user.id}
+
 
 @router.post("/login")
 async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
