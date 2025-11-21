@@ -74,3 +74,5 @@ async def get_lobbies(db: AsyncSession = Depends(get_db)):
             "players": players
         })
     return result
+
+

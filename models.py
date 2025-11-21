@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -35,6 +35,8 @@ class Lobby(Base):
 
 class LobbyPlayer(Base):
     __tablename__ = "lobby_players"
+    lat = Column(Float)
+    lon = Column(Float)
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), primary_key=True)
     user_id = Column(String, primary_key=True)
 
@@ -47,3 +49,13 @@ class Photo(Base):
     status = Column(String, default="unknown")
     recognized_person = Column(String, nullable=True)
     uploaded_at = Column(String, default=datetime.utcnow)
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True)
+    lobby_id = Column(Integer)
+    user_id = Column(Integer)
+    content = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
