@@ -1,5 +1,5 @@
 # auth.py
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from database import get_db
 from models import User
-from fastapi import Cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,6 +45,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
+@router.get("/currernt_user")
 async def get_current_user(
         access_token: str | None = Cookie(default=None),
         db: AsyncSession = Depends(get_db)
@@ -84,7 +84,11 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    return {"msg": "User registered", "user_id": db_user.id}
+
+    return {
+        "msg": "User registered",
+        "user_id": db_user.id
+    }
 
 
 @router.post("/login")

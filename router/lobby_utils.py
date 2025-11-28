@@ -7,9 +7,17 @@ import models
 
 
 async def ensure_user_in_lobby(db: AsyncSession, lobby_id: int, user_id: int):
+    try:
+        lobby_uuid = uuid.UUID(int=lobby_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lobby_id format")
+
+
+    print(f"Checking if user {user_id} is in lobby {lobby_uuid}")
+
     result = await db.execute(
         select(models.LobbyPlayer).where(
-            models.LobbyPlayer.lobby_id == uuid.UUID(lobby_id),
+            models.LobbyPlayer.lobby_id == lobby_uuid,
             models.LobbyPlayer.user_id == user_id
         )
     )
@@ -17,3 +25,5 @@ async def ensure_user_in_lobby(db: AsyncSession, lobby_id: int, user_id: int):
 
     if not player:
         raise HTTPException(status_code=403, detail="User is not in this lobby")
+
+    print("User found in lobby.")

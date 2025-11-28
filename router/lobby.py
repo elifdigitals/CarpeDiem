@@ -30,11 +30,17 @@ async def create_lobby(data: LobbyCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{lobby_id}/join")
-async def join_lobby(lobby_id: int, data: LobbyJoin, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.Lobby).where(models.Lobby.id == uuid.UUID(lobby_id)))
+async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(get_db)):
+    try:
+        lobby_uuid = uuid.UUID(lobby_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    res = await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_uuid))
     lobby = res.scalar_one_or_none()
     if not lobby:
         raise HTTPException(status_code=404, detail="Lobby not found")
+
     player = models.LobbyPlayer(lobby_id=lobby.id, user_id=data.user_id)
     db.add(player)
     await db.commit()
