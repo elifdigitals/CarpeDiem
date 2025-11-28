@@ -4,7 +4,7 @@ from router import live, game
 from router.auth import router as auth_router
 from router.lobby import router as lobby_router
 from router.photo import router as photo_router
-from router.profile import  router as profile_router
+from router.profile import router as profile_router
 from starlette.middleware.cors import CORSMiddleware
 from exceptions import (
     http_exception_handler,

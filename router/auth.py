@@ -3,12 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from database import get_db
 from models import User
+from fastapi import Cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,6 +44,33 @@ def verify_password(plain, hashed):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
+
+async def get_current_user(
+        access_token: str | None = Cookie(default=None),
+        db: AsyncSession = Depends(get_db)
+):
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+
+    try:
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
 
 
 @router.post("/register")
