@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-// import 'lobby_screen.dart';
 import 'login_screen.dart';
+import 'create_profile_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
-  
+
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
-} 
+}
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -17,42 +17,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
   String? _errorMessage;
-  
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _loading = true;
       _errorMessage = null;
     });
-    
+
     try {
-      final token = await ApiService.register(
+      final responseData = await ApiService.register(
         _emailController.text.trim(),
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
-      
-      debugPrint('JWT Token (after register): $token'); 
-      
+      debugPrint('-------------- API RESPONSE START --------------');
+      debugPrint('$responseData');
+      debugPrint('-------------- API RESPONSE END ----------------');
+
+      int userId = responseData["user_id"];
+      String msg = responseData["msg"];
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful!')),
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateProfileScreen(userId: userId),
+        ),
       );
-      
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(builder: (context) => const LobbyScreen()),
-      // );
+
     } catch (e) {
       setState(
-        () => _errorMessage = e.toString().replaceFirst('Exception: ', ''),
+            () => _errorMessage = e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       setState(() => _loading = false);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   Form(
                     key: _formKey,
                     child: Column(
@@ -95,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration('Email'),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Введите email' : null,
+                          v == null || v.isEmpty ? 'Введите email' : null,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -111,14 +115,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: true,
                           decoration: _inputDecoration('Пароль'),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Введите пароль' : null,
+                          v == null || v.isEmpty ? 'Введите пароль' : null,
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -134,32 +150,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: _loading
                           ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                            )
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                           : const Text('Зарегистрироваться',
-                              style: TextStyle(fontSize: 18)),
+                          style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                  
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacement(
@@ -186,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-  
+
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       hintText: label,

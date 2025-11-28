@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
+import 'login_screen.dart';
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -9,21 +10,21 @@ class LobbyScreen extends StatelessWidget {
     final nearbyGames = [
       {
         "id": 1,
-        "name": "Парк Горького",
+        "name": "Парк Победы",
         "players": 8,
         "timeLeft": "15 мин",
         "mode": "Быстрый матч",
       },
       {
         "id": 2,
-        "name": "ТРЦ Афимолл",
+        "name": "ТРЦ   Азия Молл",
         "players": 12,
         "timeLeft": "25 мин",
         "mode": "Семейный",
       },
       {
         "id": 3,
-        "name": "МГУ",
+        "name": " Ала-Тоо",
         "players": 6,
         "timeLeft": "45 мин",
         "mode": "Корпоративный",
@@ -53,13 +54,20 @@ class LobbyScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Москва, Центр',
+                        'Бишкек, Центр',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
                   IconButton(
-                    onPressed: null, // TODO: profile
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginScreen(),
+                        ),
+                      );
+                    }, // TODO: profile
                     icon: Text('👤', style: TextStyle(fontSize: 24)),
                   ),
                 ],
