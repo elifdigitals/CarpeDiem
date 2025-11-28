@@ -84,10 +84,15 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
 
     return {
         "msg": "User registered",
-        "user_id": db_user.id
+        "user_id": db_user.id,
+        "access_token": access_token
     }
 
 
@@ -104,7 +109,7 @@ async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(
     response.set_cookie(key="access_token", value=access_token, httponly=True)
     return {
         "msg": "Logged in",
-        "access": access_token,
+        "access_token": access_token,
         "username": user.username,
         "email": user.email
     }

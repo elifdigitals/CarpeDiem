@@ -43,6 +43,17 @@ async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(
     if not lobby:
         raise HTTPException(status_code=404, detail="Lobby not found")
 
+    player_res = await db.execute(
+        select(models.LobbyPlayer).where(
+            models.LobbyPlayer.lobby_id == lobby_uuid,
+            models.LobbyPlayer.user_id == data.user_id
+        )
+    )
+    existing_player = player_res.scalar_one_or_none()
+
+    if existing_player:
+        raise HTTPException(status_code=400, detail="User already in this lobby")
+
     player = models.LobbyPlayer(lobby_id=lobby.id, user_id=data.user_id)
     db.add(player)
     await db.commit()

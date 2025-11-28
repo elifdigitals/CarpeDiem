@@ -13,6 +13,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_pw = Column(String)
 
+    photos = relationship("Photo", back_populates="user")
+
 class UserProfile(Base):
     __tablename__ = "profiles"
 
@@ -33,6 +35,8 @@ class Lobby(Base):
     mode = Column(String, default="default")
     status = Column(String, default="waiting")
 
+    # photos = relationship("Photo", back_populates="lobby")
+
 class LobbyPlayer(Base):
     __tablename__ = "lobby_players"
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), primary_key=True)
@@ -41,7 +45,7 @@ class LobbyPlayer(Base):
 class Photo(Base):
     __tablename__ = "photos"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), nullable=False)
     file_path = Column(String, nullable=False)
     status = Column(String, default="unknown")
@@ -49,5 +53,5 @@ class Photo(Base):
     uploaded_at = Column(String, default=datetime.utcnow)
     encoding_path = Column(String)
 
-    # user = relationship("User", back_populates="photos")
+    user = relationship("User", back_populates="photos")
     # lobby = relationship("Lobby", back_populates="photos")
