@@ -1,3 +1,4 @@
+# face_recognation/inference.py
 import torch
 from PIL import Image
 from face_recognation.model import FaceClassifier

@@ -4,6 +4,7 @@ venv
 env
 .env
 dataset/model.pt
+dataset/*
 *.dll
 *.dat
 __pycache__

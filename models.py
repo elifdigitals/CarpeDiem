@@ -47,3 +47,7 @@ class Photo(Base):
     status = Column(String, default="unknown")
     recognized_person = Column(String, nullable=True)
     uploaded_at = Column(String, default=datetime.utcnow)
+    encoding_path = Column(String)
+
+    # user = relationship("User", back_populates="photos")
+    # lobby = relationship("Lobby", back_populates="photos")

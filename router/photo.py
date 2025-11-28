@@ -1,41 +1,33 @@
 # photo.py
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse, FileResponse
-from sqlalchemy import select
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from PIL import Image
 from io import BytesIO
 import os
 import uuid
 import torch
-
+from PIL import Image
+from sqlalchemy.future import select
 from .auth import get_current_user
 from .lobby_utils import ensure_user_in_lobby
 from database import get_db
+from face_recognation.detector import extract_face, encode_face
 from face_recognation.model import FaceClassifier
 import models
 
 
-MODEL_PATH = "C:/CarpeDiem/dataset/model.pt"
 UPLOAD_DIR = "uploaded_photos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-ckpt = torch.load(MODEL_PATH, map_location="cpu")
-classes = ckpt["classes"]
-
-recognizer = FaceClassifier(num_classes=len(classes))
-recognizer.load_state_dict(ckpt["model_state_dict"])
-recognizer.eval()
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
 
-@router.post("/upload")
+@router.post("/{lobby_id}/upload")
 async def upload_photo(
-    lobby_id: int = Form(...),
-    file: UploadFile = File(...),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+        lobby_id: str,
+        file: UploadFile = File(...),
+        current_user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
 ):
     await ensure_user_in_lobby(db, lobby_id, current_user.id)
 
@@ -43,59 +35,33 @@ async def upload_photo(
         raise HTTPException(status_code=400, detail="Invalid image format")
 
     contents = await file.read()
+    face_image = extract_face(contents)
+    if face_image is None:
+        raise HTTPException(status_code=400, detail="No face detected in the image")
 
-    try:
-        img = Image.open(BytesIO(contents)).convert("RGB")
-    except:
-        raise HTTPException(status_code=400, detail="Invalid image data")
+    unknown_encoding = encode_face(contents)
+    if unknown_encoding is None:
+        raise HTTPException(status_code=400, detail="Failed to encode the face")
 
-    preprocess = torch.hub.load("pytorch/vision", "transforms").Compose([
-        torch.hub.load("pytorch/vision", "transforms").Resize((224, 224)),
-        torch.hub.load("pytorch/vision", "transforms").ToTensor(),
-        torch.hub.load("pytorch/vision", "transforms").Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        )
-    ])
+    user_photo = await db.execute(select(models.Photo).filter(models.Photo.user_id == current_user.id))
+    user_photos = user_photo.scalars().all()
 
-    input_tensor = preprocess(img).unsqueeze(0)
+    for photo in user_photos:
+        saved_encoding = torch.load(photo.encoding_path)
+        if saved_encoding is None:
+            continue
 
-    with torch.no_grad():
-        logits = recognizer(input_tensor)
-        probs = torch.softmax(logits, dim=1)
-        conf, pred = torch.max(probs, dim=1)
-
-    confidence = float(conf.item())
-    predicted_class = classes[pred.item()]
-
-    status = "recognized" if confidence >= 0.75 else "unknown"
-    person = predicted_class if confidence >= 0.75 else None
-
-    # save file
-    file_ext = file.filename.split(".")[-1]
-    file_name = f"{uuid.uuid4()}.{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, file_name)
-
-    with open(file_path, "wb") as f:
-        f.write(contents)
-
-    # save to DB
-    photo = models.Photo(
-        user_id=current_user.id,
-        lobby_id=uuid.UUID(str(lobby_id)),
-        file_path=file_path,
-        status=status,
-        recognized_person=person
-    )
-
-    db.add(photo)
-    await db.commit()
+        if compare_faces(saved_encoding, unknown_encoding):
+            return JSONResponse({
+                "status": "match",
+                "message": "This is the same person",
+                "lobby_id": lobby_id,
+                "user_id": current_user.id
+            })
 
     return JSONResponse({
+        "status": "no_match",
+        "message": "This face is not recognized",
         "lobby_id": lobby_id,
-        "user_id": current_user.id,
-        "status": status,
-        "recognized": person,
-        "confidence": confidence,
-        "file_path": file_path
+        "user_id": current_user.id
     })

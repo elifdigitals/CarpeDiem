@@ -1,3 +1,4 @@
+# face_recognation/train.py
 import os
 import argparse
 from pathlib import Path
@@ -8,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from model import FaceClassifier
+
 
 def train(data_dir, save_path, epochs=10, batch_size=32, lr=1e-4):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -48,6 +50,7 @@ def train(data_dir, save_path, epochs=10, batch_size=32, lr=1e-4):
         "classes": dataset.classes
     }, save_path)
     print(f"saved to {save_path}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

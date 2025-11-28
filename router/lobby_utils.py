@@ -2,16 +2,16 @@
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-import uuid
+from uuid import UUID
 import models
 
 
-async def ensure_user_in_lobby(db: AsyncSession, lobby_id: int, user_id: int):
+async def ensure_user_in_lobby(db: AsyncSession, lobby_id: str, user_id: int):
+
     try:
-        lobby_uuid = uuid.UUID(int=lobby_id)
+        lobby_uuid = UUID(lobby_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid lobby_id format")
-
 
     print(f"Checking if user {user_id} is in lobby {lobby_uuid}")
 

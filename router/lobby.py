@@ -6,6 +6,7 @@ import uuid
 import models
 from database import get_db
 
+from uuid import UUID
 
 router = APIRouter(prefix="/lobbies", tags=["lobbies"])
 
@@ -19,7 +20,7 @@ class LobbyJoin(BaseModel):
 
 @router.post("/create")
 async def create_lobby(data: LobbyCreate, db: AsyncSession = Depends(get_db)):
-    lobby = models.Lobby(host_id=data.host_id, mode=data.mode)
+    lobby = models.Lobby(id=uuid.uuid4(), host_id=data.host_id, mode=data.mode)
     db.add(lobby)
     await db.commit()
     await db.refresh(lobby)
@@ -31,7 +32,13 @@ async def create_lobby(data: LobbyCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{lobby_id}/join")
 async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_id))
+
+    try:
+        lobby_uuid = UUID(lobby_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    res = await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_uuid))
     lobby = res.scalar_one_or_none()
     if not lobby:
         raise HTTPException(status_code=404, detail="Lobby not found")
@@ -43,11 +50,18 @@ async def join_lobby(lobby_id: str, data: LobbyJoin, db: AsyncSession = Depends(
 
 
 @router.get("/{lobby_id}")
-async def get_lobby(lobby_id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.Lobby).where(models.Lobby.id == uuid.UUID(lobby_id)))
+async def get_lobby(lobby_id: str, db: AsyncSession = Depends(get_db)):
+
+    try:
+        lobby_uuid = UUID(lobby_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    res = await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_uuid))
     lobby = res.scalar_one_or_none()
     if not lobby:
         raise HTTPException(status_code=404, detail="Lobby not found")
+
     players_res = await db.execute(select(models.LobbyPlayer.user_id).where(models.LobbyPlayer.lobby_id == lobby.id))
     players = [row[0] for row in players_res]
     return {"lobby_id": int(lobby.id), "host": lobby.host_id, "mode": lobby.mode, "status": lobby.status,
@@ -68,7 +82,7 @@ async def get_lobbies(db: AsyncSession = Depends(get_db)):
         )
         players = [row[0] for row in players_res]
         result.append({
-            "lobby_id": int(lobby.id),
+            "lobby_id": str(lobby.id),
             "host": lobby.host_id,
             "mode": lobby.mode,
             "status": lobby.status,
