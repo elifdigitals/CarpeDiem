@@ -45,7 +45,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-@router.get("/currernt_user")
+@router.get("/current_user")
 async def get_current_user(
         access_token: str | None = Cookie(default=None),
         db: AsyncSession = Depends(get_db)
