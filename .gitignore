@@ -3,6 +3,7 @@
 venv
 env
 .env
+uploads
 dataset/model.pt
 dataset/*
 *.dll
