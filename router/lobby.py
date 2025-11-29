@@ -74,8 +74,8 @@ async def get_lobby(lobby_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lobby not found")
 
     players_res = await db.execute(select(models.LobbyPlayer.user_id).where(models.LobbyPlayer.lobby_id == lobby.id))
-    players = [row[0] for row in players_res]
-    return {"lobby_id": int(lobby.id), "host": lobby.host_id, "mode": lobby.mode, "status": lobby.status,
+    players = [int(row[0]) for row in players_res]
+    return {"lobby_id": lobby_uuid, "host": int(lobby.host_id), "mode": lobby.mode, "status": lobby.status,
             "players": players}
 
 
