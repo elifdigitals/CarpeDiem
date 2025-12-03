@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'login_screen.dart';
+import 'join_lobby_screen.dart';
+import '../services/api_service.dart';
+
 
 class LobbyScreen extends StatelessWidget {
   const LobbyScreen({super.key});
@@ -138,11 +141,12 @@ class LobbyScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        final userId = await AuthStorage.getUserId();
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const CreateLobbyScreen(),
+                            builder: (_) => CreateLobbyScreen(userId: userId),
                           ),
                         );
                       },
@@ -169,7 +173,15 @@ class LobbyScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: null, // TODO: join lobby
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const JoinLobbyScreen(),
+                          ),
+                        );
+                      },
+
                       icon: const Icon(Icons.groups, color: Color(0xFF5B21B6)),
                       label: const Text(
                         'Присоединиться к игре',

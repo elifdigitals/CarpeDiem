@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../services/lobby_api.dart';
+import 'lobby_room_screen.dart';
 
 class CreateLobbyScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onCreateGame;
+  final int? userId;
 
-  const CreateLobbyScreen({this.onBack, this.onCreateGame, super.key});
+  const CreateLobbyScreen({this.onBack, this.onCreateGame, super.key, required this.userId});
 
   @override
   State<CreateLobbyScreen> createState() => _CreateLobbyScreenState();
@@ -301,7 +304,27 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                       child: ElevatedButton(
                         onPressed: lobbyName.trim().isEmpty
                             ? null
-                            : widget.onCreateGame,
+                            : () async {
+                          final lobby = await LobbyApi.createLobby(
+                            userId: widget.userId,
+                            name: lobbyName,
+                            mode: selectedMode,
+                            time: int.parse(timeLimit),
+                          );
+
+                          if (lobby != null) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => LobbyRoomScreen(lobbyId: lobby['id']),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Ошибка создания лобби")),
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7C3AED),
                           padding: const EdgeInsets.symmetric(vertical: 16),

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 
 
 class ApiService {
@@ -42,13 +44,22 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['access_token'] ?? '';
+      await AuthStorage.saveUser(
+        data["user_id"],
+        data["access_token"],
+      );
+
     } else {
       final error = jsonDecode(response.body);
       throw Exception(error['detail'] ?? 'Login failed');
     }
   }
 
-  static Future<String> register(String email, String username, String password) async {
+  static Future<Map<String, dynamic>> register(
+      String email,
+      String username,
+      String password,
+      ) async {
     final uri = Uri.parse('$baseUrl/auth/register');
     final response = await http.post(
       uri,
@@ -59,13 +70,16 @@ class ApiService {
         'password': password,
       }),
     );
+    final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body);
-
-      // return await login(email, password);
+      await AuthStorage.saveUser(
+        responseData["user_id"],
+        responseData["access_token"],
+      );
+      return responseData as Map<String, dynamic>;
     } else {
-      final error = jsonDecode(response.body);
+      final error = responseData;
       throw Exception(error['detail'] ?? 'Registration failed');
     }
   }
@@ -78,7 +92,7 @@ class ApiService {
     required String phone,
     required File photo,
   }) async {
-    final uri = Uri.parse('$baseUrl/profile/$userId/create');
+    final uri = Uri.parse('$baseUrl/profile/create');
 
     var request = http.MultipartRequest('POST', uri);
 
@@ -112,42 +126,84 @@ class ApiService {
     }
   }
 
-  static Future<String> getLobbies() async {
-    final uri = Uri.parse('$baseUrl/lobbies');
-    final response = await http.get(uri);
+  static Future<Map<String, dynamic>> getProfile(int userId) async {
+    final uri = Uri.parse('$baseUrl/profile/$userId');
+    final token = await AuthStorage.getToken();
 
-    if (response.statusCode == 200) {
-      print('Response data: ${response.body}');
-      return response.body;
-    } else {
-    print('Request failed with status: ${response.statusCode}.');
-    return "";
-    }
-    Future<void> createLobby({
-    required String baseUrl,
-    required String lobbyName,
-    required String selectedMode,
-    required int timeLimit,
-    }) async {
-    final url = Uri.parse('$baseUrl/lobbies');
-
-    final response = await http.post(
-      url,
+    final response = await http.get(
+      uri,
       headers: {
-          'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({
-          'lobbyName': lobbyName,
-          'selectedMode': selectedMode,
-          'timeLimit': timeLimit,
-          }),
     );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print('Лобби успешно создано: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
     } else {
-      print('Ошибка: ${response.statusCode} — ${response.body}');
-      }
+      throw Exception("Failed to load profile");
     }
+  }
+
+  static Future<bool> updateProfile({
+    required int userId,
+    required String fullName,
+    required String location,
+    required String phone,
+    required String birthDate,
+    File? photoFile,
+  }) async {
+    final uri = Uri.parse('$baseUrl/profile/update/$userId');
+    final token = await AuthStorage.getToken();
+
+    final request = http.MultipartRequest("PUT", uri);
+
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['full_name'] = fullName;
+    request.fields['location'] = location;
+    request.fields['phone'] = phone;
+    request.fields['birth_date'] = birthDate;
+
+    if (photoFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('photo', photoFile.path),
+      );
+    }
+
+    final response = await request.send();
+
+    return response.statusCode == 200;
+  }
+
+  Future<File?> takePhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera);
+
+    if (picked == null) return null;
+
+    return File(picked.path);
+  }
+}
+
+class AuthStorage {
+  static Future<void> saveUser(int userId, String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_id', userId);
+    await prefs.setString('token', token);
+  }
+
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('user_id');
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'register_screen.dart';
-// import 'lobby_screen.dart';
+import 'lobby_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,6 +34,12 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint('JWT Token: $token');
       
       if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LobbyScreen()),
+            (route) => false,
+      );
       
       ScaffoldMessenger.of(
         context,

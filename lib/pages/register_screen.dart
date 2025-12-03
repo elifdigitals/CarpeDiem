@@ -32,9 +32,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
-      debugPrint('-------------- API RESPONSE START --------------');
-      debugPrint('$responseData');
-      debugPrint('-------------- API RESPONSE END ----------------');
 
       int userId = responseData["user_id"];
       String msg = responseData["msg"];

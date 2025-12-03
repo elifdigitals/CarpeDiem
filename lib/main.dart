@@ -6,14 +6,16 @@ import 'pages/lobby_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  bool isLogged = await ApiService.isLoggedIn();
+  final userId = await AuthStorage.getUserId();
 
-  runApp(CarpeDiemApp(initialScreen: isLogged ? const LobbyScreen() : const WelcomeScreen()));
+
+  runApp(CarpeDiemApp(isLoggedIn: userId != null,));
 }
 
 class CarpeDiemApp extends StatelessWidget {
-  final Widget initialScreen;
-  const CarpeDiemApp({super.key, required this.initialScreen});
+
+  final bool isLoggedIn;
+  const CarpeDiemApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,7 @@ class CarpeDiemApp extends StatelessWidget {
         primarySwatch: Colors.indigo,
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(),
+      home: isLoggedIn ? const LobbyScreen() : const WelcomeScreen(),
     );
   }
 }
