@@ -8,8 +8,8 @@ import os
 import uuid
 import torch
 
-from auth import get_current_user
-from lobby_utils import ensure_user_in_lobby
+from .auth import get_current_user
+from .lobby_utils import ensure_user_in_lobby
 from database import get_db
 from face_recognation.model import FaceClassifier
 import models

@@ -84,7 +84,17 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    return {"msg": "User registered", "user_id": db_user.id}
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    return {
+        "msg": "User registered",
+        "user_id": int(db_user.id),
+        "access_token": access_token
+    }
+
 
 
 @router.post("/login")
@@ -97,10 +107,15 @@ async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
+    db_user = User(username=user.username, email=user.email, hashed_pw=user.hashed_pw)
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
     response.set_cookie(key="access_token", value=access_token, httponly=True)
     return {
         "msg": "Logged in",
-        "access": access_token,
+        "access_token": access_token,
+        "user_id": int(db_user.id),
         "username": user.username,
         "email": user.email
     }
