@@ -7,17 +7,22 @@ from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_pw = Column(String)
-
-    photos = relationship("Photo", back_populates="user")
+    
+    # Найдите класс User в файле models.py и добавьте этот метод:
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            # Добавьте другие поля по необходимости
+        }
 
 class UserProfile(Base):
     __tablename__ = "profiles"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     full_name = Column(String, nullable=False)
@@ -26,21 +31,19 @@ class UserProfile(Base):
     phone = Column(String, nullable=False)
     photo_path = Column(String, nullable=False)
 
-    user = relationship("User", backref="profile")
-
 class Lobby(Base):
     __tablename__ = "lobbies"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    host_id = Column(String, nullable=False)
+    host_id = Column(Integer, nullable=False)  # ДОЛЖЕН БЫТЬ Integer
     mode = Column(String, default="default")
     status = Column(String, default="waiting")
-
-    # photos = relationship("Photo", back_populates="lobby")
+    name = Column(String)
+    time_limit = Column(Integer)
 
 class LobbyPlayer(Base):
     __tablename__ = "lobby_players"
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), primary_key=True)
-    user_id = Column(String, primary_key=True)
+    user_id = Column(Integer, primary_key=True)  # ДОЛЖЕН БЫТЬ Integer
 
 class Photo(Base):
     __tablename__ = "photos"
@@ -52,6 +55,3 @@ class Photo(Base):
     recognized_person = Column(String, nullable=True)
     uploaded_at = Column(String, default=datetime.utcnow)
     encoding_path = Column(String)
-
-    user = relationship("User", back_populates="photos")
-    # lobby = relationship("Lobby", back_populates="photos")
