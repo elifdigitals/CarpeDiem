@@ -33,20 +33,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, title="CarpeDiem API", version="1.0.0")
 
-# CORS настройки
+# CORS настройки - ДОБАВЛЕНО порты для Flutter dev server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:8000",
         "http://localhost:8080",
         "http://localhost:4200",
+        "http://localhost:3000",        # Flutter Web default
+        "http://localhost:53238",       # Flutter Web dev server
         "http://localhost",
         "http://127.0.0.1:8000",
         "http://127.0.0.1:8080",
         "http://127.0.0.1:4200",
+        "http://127.0.0.1:3000",       # Flutter Web alternative
+        "http://127.0.0.1:53238",      # Flutter Web dev server alternative
         "http://127.0.0.1",
-        "http://10.0.2.2:8000",
-        "*"
+        "http://10.0.2.2:8000",        # Android emulator
+        "*"  # На всякий случай для отладки
     ],
     allow_credentials=True,
     allow_methods=["*"],

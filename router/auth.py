@@ -42,6 +42,15 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    # Логируем входящие заголовки и куки для отладки
+    try:
+        print('>>> Incoming request headers:', dict(request.headers))
+    except Exception:
+        print('>>> Incoming request headers: <could not convert>')
+    try:
+        print('>>> Incoming cookies:', request.cookies)
+    except Exception:
+        print('>>> Incoming cookies: <could not convert>')
     # Пробуем получить токен из заголовка Authorization
     auth_header = request.headers.get("Authorization")
     token = None
@@ -52,6 +61,8 @@ async def get_current_user(
     # Если нет в заголовке, пробуем из кук
     if not token:
         token = request.cookies.get("access_token")
+
+    print('>>> token extracted:', token)
     
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")

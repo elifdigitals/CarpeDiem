@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -44,6 +44,7 @@ class LobbyPlayer(Base):
     __tablename__ = "lobby_players"
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), primary_key=True)
     user_id = Column(Integer, primary_key=True)  # ДОЛЖЕН БЫТЬ Integer
+    is_ready = Column(Boolean, default=False)  # Статус готовности игрока
 
 class Photo(Base):
     __tablename__ = "photos"
