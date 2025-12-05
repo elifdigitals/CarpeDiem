@@ -47,6 +47,9 @@ async def upload_photo(
         current_user=Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
 ):
+    print(f"📥 Received photo upload request for lobby: {lobby_id}")
+    print(f"👤 User: {current_user.id}, File: {file.filename}, Size: {file.size}")
+
     await ensure_user_in_lobby(db, lobby_id, current_user.id)
     lobby_uuid = UUID(lobby_id)
 

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel
 from typing import Optional
-import uuid
+from uuid import UUID
 import models
 from database import get_db
 
@@ -116,7 +116,7 @@ async def join_lobby(
         authorization: Optional[str] = Header(default=None)
 ):
     try:
-        lobby_uuid = uuid.UUID(lobby_id)
+        lobby_uuid = UUID(lobby_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid lobby ID format")
 
@@ -153,7 +153,7 @@ async def join_lobby(
 @router.get("/{lobby_id}")
 async def get_lobby(lobby_id: str, db: AsyncSession = Depends(get_db)):
     try:
-        lobby_uuid = uuid.UUID(lobby_id)
+        lobby_uuid = UUID(lobby_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid lobby ID format")
 
@@ -207,3 +207,116 @@ async def get_lobbies(db: AsyncSession = Depends(get_db)):
     return result
 
 
+@router.delete("/{lobby_id}/leave")
+async def leave_lobby(
+        lobby_id: str,
+        db: AsyncSession = Depends(get_db),
+        authorization: Optional[str] = Header(default=None)
+):
+    try:
+        current_user_id = await get_current_user_id(db, authorization)
+
+        try:
+            lobby_uuid = UUID(lobby_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+        res = await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_uuid))
+        lobby = res.scalar_one_or_none()
+
+        if not lobby:
+            raise HTTPException(status_code=404, detail="Lobby not found")
+
+        player_res = await db.execute(
+            select(models.LobbyPlayer).where(
+                models.LobbyPlayer.lobby_id == lobby_uuid,
+                models.LobbyPlayer.user_id == str(current_user_id)
+            )
+        )
+        player = player_res.scalar_one_or_none()
+
+        if not player:
+            raise HTTPException(status_code=400, detail="User is not in this lobby")
+
+        await db.delete(player)
+        await db.commit()
+
+        await db.refresh(lobby)
+
+        remaining_players_res = await db.execute(
+            select(models.LobbyPlayer).where(models.LobbyPlayer.lobby_id == lobby_uuid)
+        )
+        remaining_players = remaining_players_res.scalars().all()
+
+        if not remaining_players:
+            await db.delete(lobby)
+            await db.commit()
+            return {"message": "Successfully left the lobby. Lobby deleted because it's empty."}
+
+        if str(current_user_id) == lobby.host_id and remaining_players:
+            new_host_id = remaining_players[0].user_id
+            lobby.host_id = new_host_id
+            db.add(lobby)
+            await db.commit()
+            await db.refresh(lobby)
+            return {
+                "message": "Successfully left the lobby. New host assigned.",
+                "new_host_id": int(new_host_id)
+            }
+
+        return {"message": "Successfully left the lobby"}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{lobby_id}/kick/{user_id}")
+async def kick_player(
+        lobby_id: str,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        authorization: Optional[str] = Header(default=None)
+):
+    current_user_id = await get_current_user_id(db, authorization)
+
+    try:
+        lobby_uuid = UUID(lobby_id)
+    except ValueError:
+        return HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    res= await db.execute(select(models.Lobby).where(models.Lobby.id == lobby_uuid))
+    lobby = res.scalar_one_or_none()
+
+    if not lobby:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+
+    if int(current_user_id) != int(lobby.host_id):
+        raise HTTPException(status_code=404, detail="Only host can kick")
+
+    players_res = await db.execute(
+        select(models.LobbyPlayer).where(
+            models.LobbyPlayer.lobby_id == lobby.uuid,
+            models.LobbyPlayer.user_id == int(user_id)
+        )
+    )
+    player = players_res.scalar_one_or_none()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    await db.delete(player)
+
+    remaining_players_res = await db.execute(
+        select(models.LobbyPlayer).where(models.LobbyPlayer.lobby_id == lobby.uuid)
+    )
+    remaining_players = remaining_players_res.scalars().all()
+
+    if not remaining_players:
+        await db.delete(lobby)
+
+    await db.commit()
+
+    return {
+        "message": f"Player {user_id} has been kicked",
+    }
