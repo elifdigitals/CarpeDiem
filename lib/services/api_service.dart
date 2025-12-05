@@ -21,12 +21,14 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['access_token'] ?? '';
+      final responseData = jsonDecode(response.body);
       await AuthService().saveSession(
-        data["user_id"],
-        data["access_token"],
+        responseData["user_id"],
+        responseData["access_token"],
       );
+      return responseData['access_token'] ?? '';
+
+
 
     } else {
       final error = jsonDecode(response.body);
@@ -60,6 +62,23 @@ class ApiService {
     } else {
       final error = responseData;
       throw Exception(error['detail'] ?? 'Registration failed');
+    }
+  }
+
+  static Future<void> logout() async {
+    try {
+      final token = await AuthService().getToken();
+      if (token != null) {
+        final uri = Uri.parse('$baseUrl/auth/logout');
+        await http.post(
+          uri,
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      }
+    } catch (e) {
+      print("Logout API error (ignoring): $e");
+    } finally {
+      await AuthService().logout();
     }
   }
 

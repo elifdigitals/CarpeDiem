@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/lobby_api.dart';
-import 'lobby_room_screen.dart';
+import 'lobby_detail_screen.dart';
 
 class CreateLobbyScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onCreateGame;
-  final int? userId;
 
-  const CreateLobbyScreen({this.onBack, this.onCreateGame, super.key, required this.userId});
+  const CreateLobbyScreen({this.onBack, this.onCreateGame, super.key});
 
   @override
   State<CreateLobbyScreen> createState() => _CreateLobbyScreenState();
@@ -306,22 +305,37 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                             ? null
                             : () async {
                           final lobby = await LobbyApi.createLobby(
-                            userId: widget.userId,
                             name: lobbyName,
                             mode: selectedMode,
                             time: int.parse(timeLimit),
                           );
+                          if (lobby == null) {
+                            throw Exception('Не удалось создать лобби');
+                          }
 
-                          if (lobby != null) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => LobbyRoomScreen(lobbyId: lobby['id']),
-                              ),
-                            );
-                          } else {
+                          final lobbyId = lobby['lobby_id'];
+                          if (lobbyId == null) {
+                            throw Exception('Не удалось создать лобби');
+                          }
+
+                          try {
+                            final lobbyData = await LobbyApi.getLobbyDetails(lobbyId);
+
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LobbyDetailScreen(
+                                    lobbyId: lobbyId,
+                                    initialLobbyData: lobbyData,
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            // Handle error, e.g., show a SnackBar
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Ошибка создания лобби")),
+                              SnackBar(content: Text('Failed to load lobby: $e')),
                             );
                           }
                         },
@@ -334,7 +348,10 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                         ),
                         child: const Text(
                           "Создать игру",
-                          style: TextStyle(fontSize: 18),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -342,7 +359,14 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () {}, // TODO: share
+                        onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                content: Text('Функция шеринга будет добавлена позже',
+                              ),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.share),
                         label: const Text("Поделиться ссылкой"),
                         style: OutlinedButton.styleFrom(

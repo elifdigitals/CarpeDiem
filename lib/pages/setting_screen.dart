@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import 'package:http/http.dart' as http;
+import 'welcome_screen.dart';
+import 'profile_edit_screen.dart';
+import 'dart:convert';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool soundEffectsEnabled = true;
   bool darkModeEnabled = false;
   double volumeLevel = 0.7;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -80,11 +87,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text("Log out", style: TextStyle(color: Colors.red)),
             onTap: () {
-              // Здесь потом интегрируем твой logout
-              Navigator.pop(context);
+              AuthService().logout();
+
+              if (!context.mounted) return;
+
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                    (route) => false,
+              );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.edit, color: Colors.blue),
+            title: const Text("Edit profile", style: TextStyle(color: Colors.blue)),
+            onTap: () async {
+              setState(() => _isLoading = true);
 
+              try {
+                final userId = await AuthService().getUserId();
+
+                if (userId != null) {
+                  final profileData = await ApiService.getProfile(userId);
+
+                  if (!context.mounted) return;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileEditScreen(profile: profileData),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("User ID not found")),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Error loading profile: $e")),
+                );
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
+          ),
           const SizedBox(height: 15),
         ],
       ),

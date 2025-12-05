@@ -29,11 +29,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   Future<void> save() async {
     final token = await AuthService().getToken();
-    final userId = widget.profile["user_id"];
+    final userId = await AuthService().getUserId();
 
     var req = http.MultipartRequest(
       'PUT',
-      Uri.parse("https://carpe-diem.store/profile/update/$userId"),
+      Uri.parse("http://10.0.2.2:8000/profile/update/$userId"),
     );
 
     req.headers["Authorization"] = "Bearer $token";
