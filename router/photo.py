@@ -1,6 +1,8 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
+from fastapi.responses import JSONResponse, FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from PIL import Image
 from io import BytesIO
 import os
 import uuid
@@ -12,7 +14,7 @@ from sqlalchemy.future import select
 from .auth import get_current_user
 from .lobby_utils import ensure_user_in_lobby
 from database import get_db
-from face_recognation.detector import extract_face, encode_face, compare_faces
+from face_recognation.model import FaceClassifier
 import models
 
 UPLOAD_DIR = "uploads/photos"

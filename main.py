@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from database import engine, Base
-from router import live, game
+from router.live import router as router_live
+from router.game import router as router_game
 from router.auth import router as auth_router
 from router.lobby import router as lobby_router
 from router.photo import router as photo_router
 from router.profile import router as profile_router
-from router.game import router as game_router
-from router.live import router as live_router
 from starlette.middleware.cors import CORSMiddleware
 from exceptions import (
     http_exception_handler,
@@ -15,7 +14,7 @@ from exceptions import (
 )
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-import face_recognation
+# import face_recognition
 
 
 app = FastAPI()
@@ -23,8 +22,8 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(lobby_router)
 app.include_router(photo_router)
-app.include_router(live_router)
-app.include_router(game_router)
+app.include_router(router_live)
+app.include_router(router_game)
 
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
