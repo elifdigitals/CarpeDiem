@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'profile_screen.dart';
+import 'active_lobby_screen.dart';
 import '../services/api_service.dart';
 
 class LobbyScreen extends StatefulWidget {
@@ -23,24 +24,25 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   Future<void> _loadLobbies() async {
     final result = await ApiService.getLobbies();
-    setState(() {
-      _loading = false;
-      if (result['status'] == 'success') {
-        // ИСПРАВЛЕНО: Обрабатываем оба формата ответа
-        _lobbies = result['data'] ?? result;
-        print('📊 Loaded ${_lobbies.length} lobbies');
-      } else {
-        _errorMessage = result['message'];
-        print('❌ Error loading lobbies: $_errorMessage');
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        if (result['status'] == 'success') {
+          _lobbies = result['data'] ?? result;
+        } else {
+          _errorMessage = result['message'];
+        }
+      });
+    }
   }
 
   void _refreshLobbies() {
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+      });
+    }
     _loadLobbies();
   }
 
@@ -91,7 +93,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ],
               ),
             ),
-
             Container(
               height: 200,
               decoration: const BoxDecoration(
@@ -145,7 +146,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -209,53 +209,54 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _errorMessage!,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _refreshLobbies,
+                                child: const Text('Попробовать снова'),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _refreshLobbies,
-                            child: const Text('Попробовать снова'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _lobbies.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Нет активных лобби',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Активные лобби',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                        )
+                      : _lobbies.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Нет активных лобби',
+                                style:
+                                    TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Активные лобби',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ..._lobbies.map((lobby) => _GameCard(lobby)),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          ..._lobbies.map((lobby) => _GameCard(lobby)).toList(),
-                        ],
-                      ),
-                    ),
             ),
           ],
         ),
@@ -264,19 +265,78 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 }
 
-class _GameCard extends StatelessWidget {
+class _GameCard extends StatefulWidget {
   final dynamic lobby;
   const _GameCard(this.lobby);
 
   @override
+  State<_GameCard> createState() => _GameCardState();
+}
+
+class _GameCardState extends State<_GameCard> {
+  bool _joining = false;
+
+  Future<void> _joinLobby() async {
+    final lobbyId = widget.lobby['lobby_id']?.toString();
+    if (lobbyId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка: ID лобби не найден')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _joining = true);
+
+    try {
+      final result = await ApiService.joinLobby(lobbyId);
+
+      if (result['status'] == 'success') {
+        if (!mounted) return;
+
+        // Переходим на экран активного лобби
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ActiveLobbyScreen(
+              lobbyId: lobbyId,
+              lobbyName: widget.lobby['name'] ?? 'Лобби',
+              mode: widget.lobby['mode'] ?? 'default',
+              timeLimit: widget.lobby['time_limit'] ?? 15,
+              isHost: false,
+            ),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ ${result['message'] ?? 'Ошибка при присоединении'}',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _joining = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // ИСПРАВЛЕНО: Безопасное извлечение данных
-    final playersCount = (lobby['players'] as List?)?.length ?? 0;
-    final lobbyName =
-        lobby['name'] ??
-        'Лобби ${lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
-    final gameMode = lobby['mode'] ?? 'default';
-    final hostId = lobby['host'] ?? 'Unknown';
+    final playersCount = (widget.lobby['players'] as List?)?.length ?? 0;
+    final lobbyName = widget.lobby['name'] ??
+        'Лобби ${widget.lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
+    final gameMode = widget.lobby['mode'] ?? 'default';
+    final hostId = widget.lobby['host'] ?? 'Unknown';
 
     return Card(
       elevation: 3,
@@ -341,17 +401,23 @@ class _GameCard extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Присоединение к $lobbyName')),
-                );
-              },
+              onPressed: _joining ? null : _joinLobby,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
+                disabledBackgroundColor: Colors.grey,
                 shape: const CircleBorder(),
                 padding: const EdgeInsets.all(10),
               ),
-              child: const Icon(Icons.play_arrow, color: Colors.white),
+              child: _joining
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.play_arrow, color: Colors.white),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'active_lobby_screen.dart';
 
 class CreateLobbyScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -90,15 +91,24 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
 
     if (result['status'] == 'success') {
       print('✅ SUCCESS: Lobby created');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Лобби успешно создано!')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Лобби успешно создано!')));
 
-      if (widget.onLobbyCreated != null) {
-        widget.onLobbyCreated!();
+        // Переходим на экран активного лобби
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ActiveLobbyScreen(
+              lobbyId: result['data']['lobby_id'],
+              lobbyName: lobbyName,
+              mode: selectedMode,
+              timeLimit: int.parse(timeLimit),
+              isHost: true,
+            ),
+          ),
+        );
       }
-
-      Navigator.pop(context);
     } else {
       print('❌ ERROR: ${result['message']}');
       setState(() {
@@ -134,7 +144,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
                 if (_errorMessage != null) ...[
                   Container(
                     width: double.infinity,
@@ -159,7 +168,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -187,7 +195,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -277,7 +284,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -331,7 +337,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -382,7 +387,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 Column(
                   children: [
                     SizedBox(

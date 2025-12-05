@@ -5,8 +5,7 @@ class ProfileScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onStore;
 
-  const ProfileScreen({Key? key, required this.onBack, required this.onStore})
-    : super(key: key);
+  const ProfileScreen({super.key, required this.onBack, required this.onStore});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -48,19 +47,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ApiService.currentUserId!,
       );
 
+      // ДЕБАГ: выводим структуру ответов
+      print('🔍 User response: $userResponse');
+      print('📊 Stats response: $statsResponse');
+      print('🎮 Games response: $gamesResponse');
+
       if (userResponse['status'] == 'success' &&
           statsResponse['status'] == 'success') {
         setState(() {
           _userData = userResponse['data'];
           _userStats = statsResponse['data'];
           _userGames = gamesResponse['status'] == 'success'
-              ? gamesResponse['data']['games'] ?? []
+              ? (gamesResponse['data']?['games'] ?? [])
               : [];
           _loading = false;
         });
       } else {
         setState(() {
-          _errorMessage = "Не удалось загрузить данные профиля";
+          _errorMessage =
+              userResponse['message'] ??
+              statsResponse['message'] ??
+              'Не удалось загрузить данные профиля';
           _loading = false;
         });
       }
@@ -219,294 +226,295 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                     ),
                                     SizedBox(height: 12),
-                                    Container(
-                                      child: SizedBox(
-                                        height: 400,
-                                        child: TabBarView(
-                                          children: [
-                                            // ======= STATS TAB =======
-                                            Card(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
+                                    SizedBox(
+                                      height: 400,
+                                      child: TabBarView(
+                                        children: [
+                                          // ======= STATS TAB =======
+                                          Card(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(
+                                                12.0,
                                               ),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(
-                                                  12.0,
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.emoji_events,
-                                                          color: Theme.of(
-                                                            context,
-                                                          ).primaryColor,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.emoji_events,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).primaryColor,
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Общая статистика',
+                                                        style: TextStyle(
+                                                          fontSize: 18,
                                                         ),
-                                                        SizedBox(width: 8),
-                                                        Text(
-                                                          'Общая статистика',
-                                                          style: TextStyle(
-                                                            fontSize: 18,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 12),
+                                                  Expanded(
+                                                    child: GridView(
+                                                      physics:
+                                                          NeverScrollableScrollPhysics(),
+                                                      gridDelegate:
+                                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                                            crossAxisCount: 2,
+                                                            mainAxisSpacing: 10,
+                                                            crossAxisSpacing:
+                                                                10,
+                                                            childAspectRatio:
+                                                                2.2,
                                                           ),
+                                                      children: [
+                                                        // ИСПРАВЛЕНО: безопасный доступ
+                                                        _statTile(
+                                                          (_userStats?['stats']?['total_score'] ??
+                                                                  0)
+                                                              .toString(),
+                                                          'Общий счёт',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.06,
+                                                              ),
+                                                        ),
+                                                        _statTile(
+                                                          (_userStats?['stats']?['games_played'] ??
+                                                                  0)
+                                                              .toString(),
+                                                          'Игр сыграно',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.12,
+                                                              ),
+                                                        ),
+                                                        _statTile(
+                                                          (_userStats?['stats']?['games_won'] ??
+                                                                  0)
+                                                              .toString(),
+                                                          'Побед',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.18,
+                                                              ),
+                                                        ),
+                                                        _statTile(
+                                                          '${_userStats?['stats']?['win_rate'] ?? 0}%',
+                                                          'Процент побед',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.24,
+                                                              ),
+                                                        ),
+                                                        _statTile(
+                                                          (_userStats?['stats']?['photos_taken'] ??
+                                                                  0)
+                                                              .toString(),
+                                                          'Фотографий',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.12,
+                                                              ),
+                                                        ),
+                                                        _statTile(
+                                                          (_userStats?['stats']?['lobbies_created'] ??
+                                                                  0)
+                                                              .toString(),
+                                                          'Создано лобби',
+                                                          Theme.of(context)
+                                                              .primaryColor
+                                                              .withOpacity(
+                                                                0.18,
+                                                              ),
                                                         ),
                                                       ],
                                                     ),
-                                                    SizedBox(height: 12),
-                                                    Expanded(
-                                                      child: GridView(
-                                                        physics:
-                                                            NeverScrollableScrollPhysics(),
-                                                        gridDelegate:
-                                                            SliverGridDelegateWithFixedCrossAxisCount(
-                                                              crossAxisCount: 2,
-                                                              mainAxisSpacing:
-                                                                  10,
-                                                              crossAxisSpacing:
-                                                                  10,
-                                                              childAspectRatio:
-                                                                  2.2,
-                                                            ),
-                                                        children: [
-                                                          _statTile(
-                                                            (_userStats?['stats']['total_score'] ??
-                                                                    0)
-                                                                .toString(),
-                                                            'Общий счёт',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.06,
-                                                                ),
-                                                          ),
-                                                          _statTile(
-                                                            (_userStats?['stats']['games_played'] ??
-                                                                    0)
-                                                                .toString(),
-                                                            'Игр сыграно',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.12,
-                                                                ),
-                                                          ),
-                                                          _statTile(
-                                                            (_userStats?['stats']['games_won'] ??
-                                                                    0)
-                                                                .toString(),
-                                                            'Побед',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.18,
-                                                                ),
-                                                          ),
-                                                          _statTile(
-                                                            '${_userStats?['stats']['win_rate'] ?? 0}%',
-                                                            'Процент побед',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.24,
-                                                                ),
-                                                          ),
-                                                          _statTile(
-                                                            (_userStats?['stats']['photos_taken'] ??
-                                                                    0)
-                                                                .toString(),
-                                                            'Фотографий',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.12,
-                                                                ),
-                                                          ),
-                                                          _statTile(
-                                                            (_userStats?['stats']['lobbies_created'] ??
-                                                                    0)
-                                                                .toString(),
-                                                            'Создано лобби',
-                                                            Theme.of(context)
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.18,
-                                                                ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
+                                          ),
 
-                                            // ======= GAMES TAB =======
-                                            Card(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
+                                          // ======= GAMES TAB =======
+                                          Card(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(
+                                                12.0,
                                               ),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(
-                                                  12.0,
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.camera_alt,
-                                                          color: Theme.of(
-                                                            context,
-                                                          ).primaryColor,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.camera_alt,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).primaryColor,
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Последние игры',
+                                                        style: TextStyle(
+                                                          fontSize: 18,
                                                         ),
-                                                        SizedBox(width: 8),
-                                                        Text(
-                                                          'Последние игры',
-                                                          style: TextStyle(
-                                                            fontSize: 18,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    SizedBox(height: 12),
-                                                    Expanded(
-                                                      child: _userGames.isEmpty
-                                                          ? Center(
-                                                              child: Text(
-                                                                'Нет завершенных игр',
-                                                                style: TextStyle(
-                                                                  color: Colors
-                                                                      .grey,
-                                                                ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 12),
+                                                  Expanded(
+                                                    child: _userGames.isEmpty
+                                                        ? Center(
+                                                            child: Text(
+                                                              'Нет завершенных игр',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    Colors.grey,
                                                               ),
-                                                            )
-                                                          : ListView.separated(
-                                                              itemCount:
-                                                                  _userGames
-                                                                      .length,
-                                                              separatorBuilder:
-                                                                  (_, __) =>
-                                                                      SizedBox(
-                                                                        height:
-                                                                            8,
-                                                                      ),
-                                                              itemBuilder: (context, index) {
-                                                                final game =
-                                                                    _userGames[index];
-                                                                final pos =
-                                                                    game['position']
-                                                                        as int;
-                                                                final emoji =
-                                                                    pos == 1
-                                                                    ? '🏆'
-                                                                    : pos == 2
-                                                                    ? '🥈'
-                                                                    : pos == 3
-                                                                    ? '🥉'
-                                                                    : '🎯';
+                                                            ),
+                                                          )
+                                                        : ListView.separated(
+                                                            itemCount:
+                                                                _userGames
+                                                                    .length,
+                                                            separatorBuilder:
+                                                                (_, __) =>
+                                                                    SizedBox(
+                                                                      height: 8,
+                                                                    ),
+                                                            itemBuilder: (context, index) {
+                                                              final game =
+                                                                  _userGames[index];
+                                                              final pos =
+                                                                  (game['position']
+                                                                      as int?) ??
+                                                                  0;
+                                                              final emoji =
+                                                                  pos == 1
+                                                                  ? '🏆'
+                                                                  : pos == 2
+                                                                  ? '🥈'
+                                                                  : pos == 3
+                                                                  ? '🥉'
+                                                                  : '🎯';
 
-                                                                return Container(
-                                                                  padding:
-                                                                      EdgeInsets.symmetric(
-                                                                        horizontal:
-                                                                            12,
-                                                                        vertical:
-                                                                            10,
+                                                              return Container(
+                                                                padding:
+                                                                    EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          12,
+                                                                      vertical:
+                                                                          10,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors
+                                                                      .grey
+                                                                      .shade50,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
                                                                       ),
-                                                                  decoration: BoxDecoration(
-                                                                    color: Colors
-                                                                        .grey
-                                                                        .shade50,
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                          8,
-                                                                        ),
-                                                                  ),
-                                                                  child: Row(
-                                                                    children: [
-                                                                      Expanded(
-                                                                        child: Column(
-                                                                          crossAxisAlignment:
-                                                                              CrossAxisAlignment.start,
-                                                                          children: [
-                                                                            Row(
-                                                                              children: [
-                                                                                Text(
-                                                                                  game['location'] ??
-                                                                                      'Неизвестно',
-                                                                                  style: TextStyle(
-                                                                                    fontSize: 16,
-                                                                                    fontWeight: FontWeight.w600,
-                                                                                  ),
-                                                                                ),
-                                                                                SizedBox(
-                                                                                  width: 8,
-                                                                                ),
-                                                                                Text(
-                                                                                  emoji,
-                                                                                  style: TextStyle(
-                                                                                    fontSize: 18,
-                                                                                  ),
-                                                                                ),
-                                                                              ],
-                                                                            ),
-                                                                            SizedBox(
-                                                                              height: 4,
-                                                                            ),
-                                                                            Text(
-                                                                              '${game['date']} • ${game['players']} игроков • ${game['mode']}',
-                                                                              style: TextStyle(
-                                                                                color: Colors.grey.shade600,
-                                                                              ),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                      ),
-                                                                      Column(
+                                                                ),
+                                                                child: Row(
+                                                                  children: [
+                                                                    Expanded(
+                                                                      child: Column(
                                                                         crossAxisAlignment:
-                                                                            CrossAxisAlignment.end,
+                                                                            CrossAxisAlignment.start,
                                                                         children: [
-                                                                          Text(
-                                                                            '${game['score']}',
-                                                                            style: TextStyle(
-                                                                              fontSize: 16,
-                                                                              color: Theme.of(
-                                                                                context,
-                                                                              ).primaryColor,
-                                                                            ),
+                                                                          Row(
+                                                                            children: [
+                                                                              Text(
+                                                                                (game['location']
+                                                                                        as String?) ??
+                                                                                    'Неизвестно',
+                                                                                style: TextStyle(
+                                                                                  fontSize: 16,
+                                                                                  fontWeight: FontWeight.w600,
+                                                                                ),
+                                                                              ),
+                                                                              SizedBox(
+                                                                                width: 8,
+                                                                              ),
+                                                                              Text(
+                                                                                emoji,
+                                                                                style: TextStyle(
+                                                                                  fontSize: 18,
+                                                                                ),
+                                                                              ),
+                                                                            ],
                                                                           ),
                                                                           SizedBox(
                                                                             height:
                                                                                 4,
                                                                           ),
                                                                           Text(
-                                                                            '#${game['position']} место',
+                                                                            '${game['date'] ?? ''} • ${game['players'] ?? 0} игроков • ${game['mode'] ?? ''}',
                                                                             style: TextStyle(
                                                                               color: Colors.grey.shade600,
                                                                             ),
                                                                           ),
                                                                         ],
                                                                       ),
-                                                                    ],
-                                                                  ),
-                                                                );
-                                                              },
-                                                            ),
-                                                    ),
-                                                  ],
-                                                ),
+                                                                    ),
+                                                                    Column(
+                                                                      crossAxisAlignment:
+                                                                          CrossAxisAlignment
+                                                                              .end,
+                                                                      children: [
+                                                                        Text(
+                                                                          '${game['score'] ?? 0}',
+                                                                          style: TextStyle(
+                                                                            fontSize:
+                                                                                16,
+                                                                            color: Theme.of(
+                                                                              context,
+                                                                            ).primaryColor,
+                                                                          ),
+                                                                        ),
+                                                                        SizedBox(
+                                                                          height:
+                                                                              4,
+                                                                        ),
+                                                                        Text(
+                                                                          '#${pos} место',
+                                                                          style: TextStyle(
+                                                                            color:
+                                                                                Colors.grey.shade600,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
