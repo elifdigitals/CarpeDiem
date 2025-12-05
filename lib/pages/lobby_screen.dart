@@ -1,36 +1,51 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'profile_screen.dart';
+import '../services/api_service.dart';
 
-class LobbyScreen extends StatelessWidget {
+class LobbyScreen extends StatefulWidget {
   const LobbyScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final nearbyGames = [
-      {
-        "id": 1,
-        "name": "Парк Горького",
-        "players": 8,
-        "timeLeft": "15 мин",
-        "mode": "Быстрый матч",
-      },
-      {
-        "id": 2,
-        "name": "ТРЦ Афимолл",
-        "players": 12,
-        "timeLeft": "25 мин",
-        "mode": "Семейный",
-      },
-      {
-        "id": 3,
-        "name": "МГУ",
-        "players": 6,
-        "timeLeft": "45 мин",
-        "mode": "Корпоративный",
-      },
-    ];
+  State<LobbyScreen> createState() => _LobbyScreenState();
+}
 
+class _LobbyScreenState extends State<LobbyScreen> {
+  List<dynamic> _lobbies = [];
+  bool _loading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLobbies();
+  }
+
+  Future<void> _loadLobbies() async {
+    final result = await ApiService.getLobbies();
+    setState(() {
+      _loading = false;
+      if (result['status'] == 'success') {
+        // ИСПРАВЛЕНО: Обрабатываем оба формата ответа
+        _lobbies = result['data'] ?? result;
+        print('📊 Loaded ${_lobbies.length} lobbies');
+      } else {
+        _errorMessage = result['message'];
+        print('❌ Error loading lobbies: $_errorMessage');
+      }
+    });
+  }
+
+  void _refreshLobbies() {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    _loadLobbies();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F6FF),
       body: SafeArea(
@@ -66,18 +81,12 @@ class LobbyScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) => ProfileScreen(
                             onBack: () => Navigator.pop(context),
-                            onStore: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Магазин (премиум) выбран'),
-                                ),
-                              );
-                            },
+                            onStore: () {},
                           ),
                         ),
                       );
                     },
-                    icon: Text('👤', style: TextStyle(fontSize: 24)),
+                    icon: const Text('👤', style: TextStyle(fontSize: 24)),
                   ),
                 ],
               ),
@@ -118,28 +127,26 @@ class LobbyScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   Positioned(
                     top: 20,
                     left: 30,
-                    child: _MapDot(color: Color(0xFF8B5CF6)),
+                    child: _MapDot(color: const Color(0xFF8B5CF6)),
                   ),
                   Positioned(
                     top: 70,
                     right: 40,
-                    child: _MapDot(color: Color(0xFF7C3AED)),
+                    child: _MapDot(color: const Color(0xFF7C3AED)),
                   ),
                   Positioned(
                     bottom: 20,
                     left: 120,
-                    child: _MapDot(color: Color(0xFFA78BFA)),
+                    child: _MapDot(color: const Color(0xFFA78BFA)),
                   ),
                 ],
               ),
             ),
 
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -151,7 +158,9 @@ class LobbyScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const CreateLobbyScreen(),
+                            builder: (_) => CreateLobbyScreen(
+                              onLobbyCreated: _refreshLobbies,
+                            ),
                           ),
                         );
                       },
@@ -178,10 +187,10 @@ class LobbyScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: null, // TODO: join lobby
-                      icon: const Icon(Icons.groups, color: Color(0xFF5B21B6)),
+                      onPressed: _refreshLobbies,
+                      icon: const Icon(Icons.refresh, color: Color(0xFF5B21B6)),
                       label: const Text(
-                        'Присоединиться к игре',
+                        'Обновить список',
                         style: TextStyle(
                           fontSize: 18,
                           color: Color(0xFF5B21B6),
@@ -199,28 +208,54 @@ class LobbyScreen extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
 
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Игры поблизости',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _refreshLobbies,
+                            child: const Text('Попробовать снова'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _lobbies.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Нет активных лобби',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Активные лобби',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ..._lobbies.map((lobby) => _GameCard(lobby)).toList(),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    ...nearbyGames.map((game) => _GameCard(game)).toList(),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -230,11 +265,19 @@ class LobbyScreen extends StatelessWidget {
 }
 
 class _GameCard extends StatelessWidget {
-  final Map<String, dynamic> game;
-  const _GameCard(this.game);
+  final dynamic lobby;
+  const _GameCard(this.lobby);
 
   @override
   Widget build(BuildContext context) {
+    // ИСПРАВЛЕНО: Безопасное извлечение данных
+    final playersCount = (lobby['players'] as List?)?.length ?? 0;
+    final lobbyName =
+        lobby['name'] ??
+        'Лобби ${lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
+    final gameMode = lobby['mode'] ?? 'default';
+    final hostId = lobby['host'] ?? 'Unknown';
+
     return Card(
       elevation: 3,
       margin: const EdgeInsets.only(bottom: 12),
@@ -250,7 +293,7 @@ class _GameCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        game["name"],
+                        lobbyName,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -263,11 +306,11 @@ class _GameCard extends StatelessWidget {
                           horizontal: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Color(0xFFEDE9FE),
+                          color: const Color(0xFFEDE9FE),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          game["mode"],
+                          _getModeDisplayName(gameMode),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF5B21B6),
@@ -282,18 +325,14 @@ class _GameCard extends StatelessWidget {
                       const Icon(Icons.people, size: 16, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text(
-                        '${game["players"]} игроков',
+                        '$playersCount игроков',
                         style: const TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(width: 12),
-                      const Icon(
-                        Icons.access_time,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
+                      const Icon(Icons.person, size: 16, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text(
-                        game["timeLeft"],
+                        'Хост: $hostId',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
@@ -302,7 +341,11 @@ class _GameCard extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: null, // TODO: join logic
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Присоединение к $lobbyName')),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
                 shape: const CircleBorder(),
@@ -314,6 +357,21 @@ class _GameCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getModeDisplayName(String mode) {
+    switch (mode) {
+      case 'quick':
+        return 'Быстрый';
+      case 'family':
+        return 'Семейный';
+      case 'corporate':
+        return 'Корпоративный';
+      case 'weekly':
+        return 'Недельный';
+      default:
+        return mode;
+    }
   }
 }
 
