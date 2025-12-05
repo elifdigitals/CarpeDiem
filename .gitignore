@@ -1,0 +1,11 @@
+.idea
+.venv
+venv
+env
+.env
+uploads
+dataset/model.pt
+dataset/*
+*.dll
+*.dat
+__pycache__
