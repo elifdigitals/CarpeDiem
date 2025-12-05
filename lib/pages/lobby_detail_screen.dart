@@ -1,7 +1,6 @@
-import 'dart:io';
+// lobby_detail_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 
 class LobbyDetailScreen extends StatefulWidget {
@@ -14,12 +13,7 @@ class LobbyDetailScreen extends StatefulWidget {
 }
 
 class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
-  late CameraController _cameraController;
-  bool _isCameraInitialized = false;
-  bool _showCamera = false;
-  File? _capturedImage;
   int _activeTab = 0;
-  final ImagePicker _picker = ImagePicker();
 
   final List<String> _chatMessages = [
     'Игрок1: Всем привет!',
@@ -30,73 +24,30 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
   }
 
-  Future<void> _initializeCamera() async {
-    try {
-      final cameras = await availableCameras();
-      final firstCamera = cameras.first;
+  void _leaveLobby() async {
+    final lobbyId = widget.lobbyData['lobby_id'];
 
-      _cameraController = CameraController(
-        firstCamera,
-        ResolutionPreset.high,
-      );
-
-      await _cameraController.initialize();
-      setState(() {
-        _isCameraInitialized = true;
-      });
-    } catch (e) {
-      print('Ошибка инициализации камеры: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _cameraController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _takePhoto() async {
-    if (!_isCameraInitialized || !_cameraController.value.isInitialized) return;
-
-    try {
-      final XFile image = await _cameraController.takePicture();
-      setState(() {
-        _capturedImage = File(image.path);
-        _showCamera = false;
-      });
-
-      // Здесь можно отправить фото на сервер
+    if (lobbyId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Фото сохранено!')),
+        const SnackBar(content: Text('Ошибка: ID лобби не найден')),
       );
-    } catch (e) {
-      print('Ошибка при съемке фото: $e');
+      return;
     }
-  }
 
-  Future<void> _pickImageFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _capturedImage = File(image.path);
-      });
+    final response = await ApiService.leaveLobby(lobbyId);
+
+    if (response['status'] == 'success') {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Вы покинули лобби')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: ${response['message']}')),
+      );
     }
-  }
-
-  void _toggleCamera() {
-    setState(() {
-      _showCamera = !_showCamera;
-    });
-  }
-
-  void _leaveLobby() {
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Вы покинули лобби')),
-    );
   }
 
   void _startGame() {
@@ -123,7 +74,6 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Шапка лобби
             Container(
               padding: const EdgeInsets.all(16),
               color: Colors.white,
@@ -164,7 +114,6 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
               ),
             ),
 
-            // Табы
             Container(
               color: Colors.white,
               child: Row(
@@ -179,16 +128,10 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
                     isActive: _activeTab == 1,
                     onTap: () => setState(() => _activeTab = 1),
                   ),
-                  _TabButton(
-                    title: 'Камера',
-                    isActive: _activeTab == 2,
-                    onTap: () => setState(() => _activeTab = 2),
-                  ),
                 ],
               ),
             ),
 
-            // Контент табов
             Expanded(
               child: IndexedStack(
                 index: _activeTab,
@@ -198,9 +141,6 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
 
                   // Таб 2: Чат
                   _buildChatTab(),
-
-                  // Таб 3: Камера
-                  _buildCameraTab(),
                 ],
               ),
             ),
@@ -278,7 +218,6 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
                   if (isHost && !isHostPlayer)
                     IconButton(
                       onPressed: () {
-                        // Кикнуть игрока
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Игрок $playerId кикнут')),
                         );
@@ -418,79 +357,6 @@ class _LobbyDetailScreenState extends State<LobbyDetailScreen> {
                   );
                 },
                 icon: const Icon(Icons.send, color: Color(0xFF7C3AED)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCameraTab() {
-    return Column(
-      children: [
-        if (_showCamera && _isCameraInitialized)
-          Expanded(
-            child: CameraPreview(_cameraController),
-          )
-        else if (_capturedImage != null)
-          Expanded(
-            child: Image.file(_capturedImage!, fit: BoxFit.cover),
-          )
-        else
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.camera_alt,
-                    size: 80,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Нажмите кнопку ниже, чтобы сделать фото',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                onPressed: _pickImageFromGallery,
-                icon: const Icon(Icons.photo_library, size: 30),
-                tooltip: 'Выбрать из галереи',
-              ),
-              ElevatedButton(
-                onPressed: _showCamera ? _takePhoto : _toggleCamera,
-                style: ElevatedButton.styleFrom(
-                  shape: const CircleBorder(),
-                  padding: const EdgeInsets.all(20),
-                  backgroundColor: const Color(0xFF7C3AED),
-                ),
-                child: Icon(
-                  _showCamera ? Icons.camera : Icons.camera_alt,
-                  size: 30,
-                  color: Colors.white,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _capturedImage = null;
-                    _showCamera = false;
-                  });
-                },
-                icon: const Icon(Icons.delete, size: 30, color: Colors.red),
-                tooltip: 'Удалить фото',
               ),
             ],
           ),
