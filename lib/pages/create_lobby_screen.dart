@@ -4,10 +4,9 @@ import 'lobby_room_screen.dart';
 
 class CreateLobbyScreen extends StatefulWidget {
   final VoidCallback? onBack;
-  final VoidCallback? onCreateGame;
-  final int? userId;
+  final VoidCallback? onLobbyCreated;
 
-  const CreateLobbyScreen({this.onBack, this.onCreateGame, super.key, required this.userId});
+  const CreateLobbyScreen({this.onBack, this.onLobbyCreated, super.key});
 
   @override
   State<CreateLobbyScreen> createState() => _CreateLobbyScreenState();
@@ -17,6 +16,8 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
   String lobbyName = "";
   String selectedMode = "quick";
   String timeLimit = "15";
+  bool _loading = false;
+  String? _errorMessage;
 
   final gameModes = [
     {
@@ -52,6 +53,60 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
     "Сделай селфи с незнакомцем 🤳",
   ];
 
+  Future<void> _createLobby() async {
+    print('🎯 CREATE LOBBY BUTTON PRESSED');
+
+    if (lobbyName.trim().isEmpty) {
+      setState(() {
+        _errorMessage = "Введите название лобби";
+      });
+      return;
+    }
+
+    if (ApiService.currentUserId == null) {
+      setState(() {
+        _errorMessage = "Ошибка: пользователь не авторизован";
+      });
+      return;
+    }
+
+    print('🔄 Setting loading state...');
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    print('🔄 Calling API...');
+    final result = await LobbyApi.createLobby(
+      lobbyName,
+      selectedMode,
+      int.parse(timeLimit),
+    );
+
+    print('📨 API Result: $result');
+    setState(() {
+      _loading = false;
+    });
+
+    if (result['status'] == 'success') {
+      print('✅ SUCCESS: Lobby created');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Лобби успешно создано!')));
+
+      if (widget.onLobbyCreated != null) {
+        widget.onLobbyCreated!();
+      }
+
+      Navigator.pop(context);
+    } else {
+      print('❌ ERROR: ${result['message']}');
+      setState(() {
+        _errorMessage = result['message'];
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,6 +134,31 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                if (_errorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 Card(
                   child: Padding(
@@ -223,6 +303,9 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                             final isSelected = timeLimit == time;
                             return Expanded(
                               child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
                                 child: ElevatedButton(
                                   onPressed: () =>
                                       setState(() => timeLimit = time),
@@ -233,6 +316,9 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                                     foregroundColor: isSelected
                                         ? Colors.white
                                         : Colors.black87,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                   child: Text("$timeм"),
                                 ),
@@ -302,29 +388,9 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: lobbyName.trim().isEmpty
+                        onPressed: _loading || lobbyName.trim().isEmpty
                             ? null
-                            : () async {
-                          final lobby = await LobbyApi.createLobby(
-                            userId: widget.userId,
-                            name: lobbyName,
-                            mode: selectedMode,
-                            time: int.parse(timeLimit),
-                          );
-
-                          if (lobby != null) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => LobbyRoomScreen(lobbyId: lobby['id']),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Ошибка создания лобби")),
-                            );
-                          }
-                        },
+                            : _createLobby,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7C3AED),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -332,9 +398,21 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
+                        child: _loading
+                            ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : const Text(
                           "Создать игру",
-                          style: TextStyle(fontSize: 18),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -342,7 +420,15 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () {}, // TODO: share
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Функция шеринга будет добавлена позже',
+                              ),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.share),
                         label: const Text("Поделиться ссылкой"),
                         style: OutlinedButton.styleFrom(

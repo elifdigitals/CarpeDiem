@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class LobbyApi {
   static const String baseUrl = 'http://10.0.2.2:8000'; // поменяй
 
-  static Future<Map<String, dynamic>?> createLobby({
+  static Future<Map<String, dynamic>> createLobby({
     required int? userId,
     required String name,
     required String mode,
@@ -24,42 +24,54 @@ class LobbyApi {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body);
+      return {'status': 'success', 'data': json.decode(response.body)};
     } else{
-      throw Exception('Ошибка сети: $Exception\n${response.body}');
-      return null;
+      return {
+        'status': 'error',
+        'message': 'HTTP Error ${response.statusCode}: ${response.body}',
+      };
     }
 
   }
 
-  static Future<List<dynamic>> getLobbies() async {
+  static Future<Map<String, dynamic>> getLobbies() async {
     final url = Uri.parse("$baseUrl/lobbies");
-    final res = await http.get(url);
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return {'status': 'success', 'data': json.decode(response.body)};
     }
-    return [];
+    return {
+      'status': 'error',
+      'message': 'Failed to load lobbies: ${response.statusCode}'
+    };
   }
 
-  static Future<Map<String, dynamic>?> joinLobby(int lobbyId, int? userId) async {
+  static Future<Map<String, dynamic>> joinLobby(int lobbyId) async {
     final url = Uri.parse("$baseUrl/lobbies/$lobbyId/join");
-    final res = await http.post(url,
+    final response = await http.post(url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'user_id': userId}),);
 
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
+    if (response.statusCode == 200) {
+      return {'status': 'success', 'data': json.decode(response.body)};
     }
-    return null;
+    return {
+      'status': 'error',
+      'message': 'HTTP Error ${response.statusCode}: ${response.body}',
+    };
+
   }
 
-  static Future<Map<String, dynamic>?> getLobby(int lobbyId) async {
+  static Future<Map<String, dynamic>> getLobby(int lobbyId) async {
     final url = Uri.parse("$baseUrl/lobbies/$lobbyId");
     final res = await http.get(url);
 
     if (res.statusCode == 200) {
-      return jsonDecode(res.body);
+      return {'status': 'success', 'data': data};
     }
-    return null;
+    return {
+      'status': 'error',
+      'message': 'Failed to load lobbies: ${response.statusCode}'
+    };
   }
 }

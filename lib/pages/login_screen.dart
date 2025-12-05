@@ -5,7 +5,7 @@ import 'lobby_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-  
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -16,23 +16,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
   String? _errorMessage;
-  
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _loading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final token = await ApiService.login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      
+
       debugPrint('JWT Token: $token');
-      
+
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
@@ -40,24 +40,24 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const LobbyScreen()),
             (route) => false,
       );
-      
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Login successful!')));
-      
+
       // Navigator.pushReplacement(
       //   context,
       //   MaterialPageRoute(builder: (context) => const LobbyScreen()),
       // );
     } catch (e) {
       setState(
-        () => _errorMessage = e.toString().replaceFirst('Exception: ', ''),
+            () => _errorMessage = e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       setState(() => _loading = false);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   Form(
                     key: _formKey,
                     child: Column(
@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration('Email'),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Введите email' : null,
+                          v == null || v.isEmpty ? 'Введите email' : null,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -108,14 +108,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: true,
                           decoration: _inputDecoration('Пароль'),
                           validator: (v) =>
-                              v == null || v.isEmpty ? 'Введите пароль' : null,
+                          v == null || v.isEmpty ? 'Введите пароль' : null,
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -131,17 +131,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: _loading
                           ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                            )
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      )
                           : const Text('Войти', style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                  
+
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 20),
                     Text(
@@ -153,9 +153,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-  
+
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       hintText: label,

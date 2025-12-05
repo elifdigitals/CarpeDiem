@@ -4,10 +4,14 @@ class AuthService {
   static const _keyUserId = "user_id";
   static const _keyToken = "auth_token";
 
+  Future<SharedPreferences> getPrefs() async {
+    return await SharedPreferences.getInstance();
+  }
+
   Future<void> saveSession(int userId, String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyUserId, userId);
-    await prefs.setString(_keyToken, token);
+    final prefs = await getPrefs();
+    prefs.setInt("user_id", userId);
+    prefs.setString("access_token", token);
   }
 
   Future<int?> getUserId() async {
