@@ -29,8 +29,10 @@ class UserProfile(Base):
 class Lobby(Base):
     __tablename__ = "lobbies"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    host_id = Column(String, nullable=False)
+    lobby_name = Column(String, nullable=False)
+    host_id = Column(Integer, nullable=False)
     mode = Column(String, default="default")
+    time_limit = Column(Integer)
     status = Column(String, default="waiting")
 
 class LobbyPlayer(Base):
@@ -38,12 +40,12 @@ class LobbyPlayer(Base):
     lat = Column(Float)
     lon = Column(Float)
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), primary_key=True)
-    user_id = Column(String, primary_key=True)
+    user_id = Column(Integer, primary_key=True)
 
 class Photo(Base):
     __tablename__ = "photos"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(String, nullable=False)
+    user_id = Column(Integer, nullable=False)
     lobby_id = Column(UUID(as_uuid=True), ForeignKey("lobbies.id"), nullable=False)
     file_path = Column(String, nullable=False)
     status = Column(String, default="unknown")

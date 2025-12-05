@@ -1,15 +1,15 @@
 # auth.py
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from typing import Optional
 
 from database import get_db
 from models import User
-from fastapi import Cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,22 +46,27 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
+@router.get("/current_user")
 async def get_current_user(
-        access_token: str | None = Cookie(default=None),
+        authorization: Optional[str] = Header(default=None),
         db: AsyncSession = Depends(get_db)
 ):
-    if not access_token:
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
         )
 
     try:
-        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
+
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
+    except (ValueError, JWTError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
     result = await db.execute(select(User).where(User.username == username))
@@ -70,7 +75,11 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    return user
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email
+    }
 
 
 @router.post("/register")
@@ -79,11 +88,19 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     existing_user = result.scalar_one_or_none()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Проверяем уникальность имени пользователя
+    result = await db.execute(select(User).where(User.username == user.username))
+    existing_username = result.scalar_one_or_none()
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
+
     hashed_pw = get_password_hash(user.password)
     db_user = User(username=user.username, email=user.email, hashed_pw=hashed_pw)
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -91,31 +108,31 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
     return {
         "msg": "User registered",
-        "user_id": int(db_user.id),
-        "access_token": access_token
+        "user_id": db_user.id,
+        "username": db_user.username,
+        "email": db_user.email,
+        "access_token": access_token,
+        "token_type": "bearer"
     }
 
 
-
 @router.post("/login")
-async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
+async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.hashed_pw):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
+
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    db_user = User(username=user.username, email=user.email, hashed_pw=user.hashed_pw)
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
+
     return {
         "msg": "Logged in",
         "access_token": access_token,
-        "user_id": int(db_user.id),
+        "token_type": "bearer",
+        "user_id": user.id,
         "username": user.username,
         "email": user.email
     }
