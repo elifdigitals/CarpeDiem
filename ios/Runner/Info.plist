@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<key>NSCameraUsageDescription</key>
+<string>Для съемки фото в лобби</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>Для записи видео в лобби</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Для выбора фото из галереи</string>
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

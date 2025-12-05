@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'profile_screen.dart';
+import 'lobby_detail_screen.dart';
 import '../services/api_service.dart';
+
 
 class LobbyScreen extends StatefulWidget {
   const LobbyScreen({super.key});
-
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
 }
+
 
 class _LobbyScreenState extends State<LobbyScreen> {
   List<dynamic> _lobbies = [];
@@ -26,7 +28,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
     setState(() {
       _loading = false;
       if (result['status'] == 'success') {
-        // ИСПРАВЛЕНО: Обрабатываем оба формата ответа
         _lobbies = result['data'] ?? result;
         print('📊 Loaded ${_lobbies.length} lobbies');
       } else {
@@ -215,47 +216,47 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _errorMessage != null
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _refreshLobbies,
-                            child: const Text('Попробовать снова'),
-                          ),
-                        ],
-                      ),
-                    )
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _refreshLobbies,
+                      child: const Text('Попробовать снова'),
+                    ),
+                  ],
+                ),
+              )
                   : _lobbies.isEmpty
                   ? const Center(
-                      child: Text(
-                        'Нет активных лобби',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    )
+                child: Text(
+                  'Нет активных лобби',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Активные лобби',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ..._lobbies.map((lobby) => _GameCard(lobby)).toList(),
-                        ],
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Активные лобби',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    ..._lobbies.map((lobby) => _GameCard(lobby)).toList(),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -268,13 +269,41 @@ class _GameCard extends StatelessWidget {
   final dynamic lobby;
   const _GameCard(this.lobby);
 
+  Future<void> _joinLobby(BuildContext context) async {
+    final lobbyId = lobby['lobby_id'];
+    final lobbyName = lobby['lobby_name'] ?? lobby['name'] ?? 'Unknown';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Присоединение к $lobbyName...')),
+    );
+
+    final result = await ApiService.joinLobby(lobbyId);
+
+    if (result['status'] == 'success') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Вы присоединились к $lobbyName!')),
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LobbyDetailScreen(lobbyData: lobby),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка: ${result['message']}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ИСПРАВЛЕНО: Безопасное извлечение данных
     final playersCount = (lobby['players'] as List?)?.length ?? 0;
-    final lobbyName =
-        lobby['name'] ??
-        'Лобби ${lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
+    final lobbyName = lobby['lobby_name'] ?? lobby['name'] ?? 'Лобби ${lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
     final gameMode = lobby['mode'] ?? 'default';
     final hostId = lobby['host'] ?? 'Unknown';
 
@@ -341,11 +370,7 @@ class _GameCard extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Присоединение к $lobbyName')),
-                );
-              },
+              onPressed: () => _joinLobby(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
                 shape: const CircleBorder(),

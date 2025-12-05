@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Вход выполнен успешно!'))
+          const SnackBar(content: Text('Вход выполнен успешно!'))
       );
 
       // ПЕРЕХОДИМ НА LOBBY_SCREEN ПОСЛЕ УСПЕШНОГО ВХОДА
@@ -94,16 +94,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration('Email'),
-                          validator: (v) => 
-                              v == null || v.isEmpty ? 'Введите email' : null,
+                          validator: (v) =>
+                          v == null || v.isEmpty ? 'Введите email' : null,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: true,
                           decoration: _inputDecoration('Пароль'),
-                          validator: (v) => 
-                              v == null || v.isEmpty ? 'Введите пароль' : null,
+                          validator: (v) =>
+                          v == null || v.isEmpty ? 'Введите пароль' : null,
                         ),
                       ],
                     ),
@@ -126,13 +126,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: _loading
                           ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                            )
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      )
                           : const Text('Войти', style: TextStyle(fontSize: 18)),
                     ),
                   ),

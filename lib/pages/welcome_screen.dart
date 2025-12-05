@@ -5,7 +5,7 @@ import 'lobby_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,7 +79,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
 
                   // КНОПКА ВХОДА
@@ -108,7 +108,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 16),
-                  
+
                   // СТАРАЯ КНОПКА "НАЧАТЬ ИГРУ" (для тестирования)
                   SizedBox(
                     width: double.infinity,

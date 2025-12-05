@@ -62,7 +62,6 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
       return;
     }
 
-    // ПРОВЕРКА: есть ли user_id
     if (ApiService.currentUserId == null) {
       setState(() {
         _errorMessage = "Ошибка: пользователь не авторизован";
@@ -233,7 +232,7 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             mode['name']!,
@@ -358,23 +357,23 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                           children: challenges
                               .map(
                                 (c) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEDE9FE),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    c,
-                                    style: const TextStyle(
-                                      color: Color(0xFF7C3AED),
-                                      fontSize: 12,
-                                    ),
-                                  ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEDE9FE),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                c,
+                                style: const TextStyle(
+                                  color: Color(0xFF7C3AED),
+                                  fontSize: 12,
                                 ),
-                              )
+                              ),
+                            ),
+                          )
                               .toList(),
                         ),
                       ],
@@ -400,20 +399,20 @@ class _CreateLobbyScreenState extends State<CreateLobbyScreen> {
                         ),
                         child: _loading
                             ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                             : const Text(
-                                "Создать игру",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          "Создать игру",
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),

@@ -38,9 +38,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (result['status'] == 'success') {
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Регистрация успешна!'))
+          const SnackBar(content: Text('Регистрация успешна!'))
       );
 
       // ПЕРЕХОДИМ НА LOBBY_SCREEN ПОСЛЕ УСПЕШНОЙ РЕГИСТРАЦИИ
@@ -96,8 +96,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration('Email'),
-                          validator: (v) => 
-                              v == null || v.isEmpty ? 'Введите email' : null,
+                          validator: (v) =>
+                          v == null || v.isEmpty ? 'Введите email' : null,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -112,8 +112,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _passwordController,
                           obscureText: true,
                           decoration: _inputDecoration('Пароль'),
-                          validator: (v) => 
-                              v == null || v.isEmpty ? 'Введите пароль' : null,
+                          validator: (v) =>
+                          v == null || v.isEmpty ? 'Введите пароль' : null,
                         ),
                       ],
                     ),
@@ -136,17 +136,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: _loading
                           ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                            )
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      )
                           : const Text(
-                              'Зарегистрироваться',
-                              style: TextStyle(fontSize: 18),
-                            ),
+                        'Зарегистрироваться',
+                        style: TextStyle(fontSize: 18),
+                      ),
                     ),
                   ),
 
