@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'lobby_room_screen.dart';
 import '../services/lobby_api.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class JoinLobbyScreen extends StatefulWidget {
   const JoinLobbyScreen({super.key});
@@ -35,7 +36,7 @@ class _JoinLobbyScreenState extends State<JoinLobbyScreen> {
             ElevatedButton(
               onPressed: loading ? null : () async {
                 final id = int.tryParse(controller.text);
-                final userId = await AuthStorage.getUserId();
+                final userId = await AuthService().getUserId();
                 if (id == null) return;
 
                 setState(() => loading = true);

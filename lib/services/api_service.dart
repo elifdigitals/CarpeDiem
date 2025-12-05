@@ -1,34 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'auth_service.dart';
 
 
 class ApiService {
   static const String baseUrl = 'http://10.0.2.2:8000';
-  static const _storage = FlutterSecureStorage();
-
-
-  static Future<void> saveSession(String token, int userId) async {
-    await _storage.write(key: 'jwt_token', value: token);
-    await _storage.write(key: 'user_id', value: userId.toString());
-  }
-
-  static Future<String?> getToken() async {
-    return await _storage.read(key: 'jwt_token');
-  }
-
-  static Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    return token != null;
-  }
-
-  static Future<void> logout() async {
-    await _storage.deleteAll();
-  }
-
 
   static Future<String> login(String email, String password) async {
     final uri = Uri.parse('$baseUrl/auth/login');
@@ -44,7 +23,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['access_token'] ?? '';
-      await AuthStorage.saveUser(
+      await AuthService().saveSession(
         data["user_id"],
         data["access_token"],
       );
@@ -73,7 +52,7 @@ class ApiService {
     final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      await AuthStorage.saveUser(
+      await AuthService().saveSession(
         responseData["user_id"],
         responseData["access_token"],
       );
@@ -109,7 +88,7 @@ class ApiService {
     );
     request.files.add(multipartFile);
 
-    final token = await getToken();
+    final token = await AuthService().getToken();
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
@@ -128,7 +107,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getProfile(int userId) async {
     final uri = Uri.parse('$baseUrl/profile/$userId');
-    final token = await AuthStorage.getToken();
+    final token = await AuthService().getToken();
 
     final response = await http.get(
       uri,
@@ -153,7 +132,7 @@ class ApiService {
     File? photoFile,
   }) async {
     final uri = Uri.parse('$baseUrl/profile/update/$userId');
-    final token = await AuthStorage.getToken();
+    final token = await AuthService().getToken();
 
     final request = http.MultipartRequest("PUT", uri);
 
@@ -185,25 +164,25 @@ class ApiService {
   }
 }
 
-class AuthStorage {
-  static Future<void> saveUser(int userId, String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('user_id', userId);
-    await prefs.setString('token', token);
-  }
-
-  static Future<int?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('user_id');
-  }
-
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
-}
+// class AuthStorage {
+//   static Future<void> saveUser(int userId, String token) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setInt('user_id', userId);
+//     await prefs.setString('token', token);
+//   }
+//
+//   static Future<int?> getUserId() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     return prefs.getInt('user_id');
+//   }
+//
+//   static Future<String?> getToken() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     return prefs.getString('token');
+//   }
+//
+//   static Future<void> logout() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.clear();
+//   }
+// }

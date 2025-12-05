@@ -5,7 +5,7 @@ class LobbyApi {
   static const String baseUrl = 'http://10.0.2.2:8000'; // поменяй
 
   static Future<Map<String, dynamic>?> createLobby({
-    required int userId,
+    required int? userId,
     required String name,
     required String mode,
     required int time,

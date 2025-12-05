@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
+import 'services/auth_service.dart';
 import 'pages/welcome_screen.dart';
 import 'pages/lobby_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final userId = await AuthStorage.getUserId();
+  final userId = await AuthService().getUserId();
 
 
   runApp(CarpeDiemApp(isLoggedIn: userId != null,));

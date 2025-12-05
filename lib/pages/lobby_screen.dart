@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'login_screen.dart';
 import 'join_lobby_screen.dart';
+import 'setting_screen.dart';
+import 'profile_screen.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 
 class LobbyScreen extends StatelessWidget {
@@ -63,15 +66,46 @@ class LobbyScreen extends StatelessWidget {
                     ],
                   ),
                   IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
-                        ),
-                      );
-                    }, // TODO: profile
-                    icon: Text('👤', style: TextStyle(fontSize: 24)),
+                    onPressed: () async {
+                      final auth = AuthService();
+                      final logged = await auth.isLoggedIn();
+
+                      if (logged) {
+                        final userId = await auth.getUserId();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ProfileScreen(
+                                userId: userId!,
+                                onBack: () => Navigator.pop(context),
+                                onStore: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => SettingsScreen()),
+                                  );
+                                },
+                              ),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      }
+                    },
+                    icon: FutureBuilder<bool>(
+                      future: AuthService().isLoggedIn(),
+                      builder: (context, snap) {
+                        if (!snap.hasData) return Text('…');
+                        return Text(
+                          snap.data! ? '🧑‍🚀' : '👤',
+                          style: TextStyle(fontSize: 24),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -142,7 +176,7 @@ class LobbyScreen extends StatelessWidget {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
-                        final userId = await AuthStorage.getUserId();
+                        final userId = await AuthService().getUserId();
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
