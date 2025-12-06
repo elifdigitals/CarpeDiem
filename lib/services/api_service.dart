@@ -1,7 +1,9 @@
+// lib/services/api_service.dart
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseUrl = 'http://localhost:8000';
@@ -14,11 +16,27 @@ class ApiService {
   static String? get authToken => _authToken;
 
   // Установка данных пользователя после авторизации
-  static void setUserData(
+  // Инициализация ApiService: загрузка сохранённой сессии
+  static const String _kTokenKey = 'carpediem_auth_token';
+  static const String _kUserIdKey = 'carpediem_user_id';
+
+  /// Load saved session (if any). Call this before `runApp`.
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _authToken = prefs.getString(_kTokenKey);
+      _currentUserId = prefs.getString(_kUserIdKey);
+    } catch (e) {
+      // If shared_preferences fails, keep in-memory state null
+    }
+  }
+
+  /// Save session to persistent storage and update in-memory state
+  static Future<void> setUserData(
     String token,
     String userId,
     Map<String, dynamic> userData,
-  ) {
+  ) async {
     _authToken = token;
     _currentUserId = userId;
     _currentUserData = {
@@ -26,7 +44,28 @@ class ApiService {
       'username': userData['username'],
       'email': userData['email'],
     };
-    print('🔑 User data set: ${_currentUserData}');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kTokenKey, token);
+      await prefs.setString(_kUserIdKey, userId);
+    } catch (e) {
+      // ignore persistent save errors (app still works in-memory)
+    }
+  }
+
+  /// Clear session (logout)
+  static Future<void> clearSession() async {
+    _authToken = null;
+    _currentUserId = null;
+    _currentUserData = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kTokenKey);
+      await prefs.remove(_kUserIdKey);
+    } catch (e) {
+      // ignore
+    }
   }
 
   // Получение заголовков с токеном
@@ -46,38 +85,30 @@ class ApiService {
     String password,
   ) async {
     try {
-      print('🔐 Attempting login for: $email');
-
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
 
-      print('📨 Login response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
 
-        // Сохраняем данные пользователя
-        _authToken = result['access_token'];
-        _currentUserId = result['user_id'].toString();
-        _currentUserData = {
-          'user_id': _currentUserId,
-          'username': result['username'],
-          'email': result['email'],
-        };
+        // Сохраняем данные пользователя и persist в SharedPreferences
+        final token = result['access_token'] ?? result['token'] ?? '';
+        final userId = (result['user_id'] ?? result['id'] ?? '').toString();
+        await setUserData(token, userId, {
+          'username': result['username'] ?? '',
+          'email': result['email'] ?? '',
+        });
 
-        print('✅ Login successful, user_id: $_currentUserId');
-
-        // Возвращаем в формате, который ожидает фронтенд
         return {
           'status': 'success',
           'data': {
-            'token': _authToken,
-            'user_id': _currentUserId,
-            'username': result['username'],
-            'email': result['email'],
+            'token': token,
+            'user_id': userId,
+            'username': result['username'] ?? '',
+            'email': result['email'] ?? '',
           },
         };
       } else {
@@ -88,7 +119,6 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Login error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
@@ -99,8 +129,6 @@ class ApiService {
     String password,
   ) async {
     try {
-      print('👤 Registering user: $username ($email)');
-
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
@@ -111,28 +139,23 @@ class ApiService {
         }),
       );
 
-      print('📨 Register response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
 
-        _authToken = result['access_token'];
-        _currentUserId = result['user_id'].toString();
-        _currentUserData = {
-          'user_id': _currentUserId,
-          'username': result['username'],
-          'email': result['email'],
-        };
-
-        print('✅ Registration successful, user_id: $_currentUserId');
+        final token = result['access_token'] ?? result['token'] ?? '';
+        final userId = (result['user_id'] ?? result['id'] ?? '').toString();
+        await setUserData(token, userId, {
+          'username': result['username'] ?? '',
+          'email': result['email'] ?? '',
+        });
 
         return {
           'status': 'success',
           'data': {
-            'token': _authToken,
-            'user_id': _currentUserId,
-            'username': result['username'],
-            'email': result['email'],
+            'token': token,
+            'user_id': userId,
+            'username': result['username'] ?? '',
+            'email': result['email'] ?? '',
           },
         };
       } else {
@@ -143,7 +166,6 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Register error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
@@ -155,20 +177,11 @@ class ApiService {
     int timeLimit,
   ) async {
     try {
-      print('🎯 Creating lobby: $name, mode: $mode');
-      print(
-        '📤 Sending POST to: $baseUrl/lobbies/create',
-      ); // Добавлено для отладки
-
-      // ИСПРАВЛЕНИЕ: меняем с /lobbies/ на /lobbies/create
       final response = await http.post(
-        Uri.parse('$baseUrl/lobbies/create'), // ← ВОТ ИСПРАВЛЕНИЕ
+        Uri.parse('$baseUrl/lobbies/create'),
         headers: _getHeaders(),
         body: jsonEncode({'name': name, 'mode': mode, 'time_limit': timeLimit}),
       );
-
-      print('📨 Create lobby response: ${response.statusCode}');
-      print('📨 Create lobby body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
@@ -181,42 +194,35 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Create lobby error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
 
   static Future<Map<String, dynamic>> getLobbies() async {
     try {
-      print('📋 Fetching lobbies...');
-
-      // ИЗМЕНЕНИЕ: Обработка случая, когда возвращается список
       final response = await http.get(
         Uri.parse('$baseUrl/lobbies/'),
         headers: _getHeaders(),
       );
 
-      print('📨 Get lobbies response: ${response.statusCode}');
-
       if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
+        final dynamic result = jsonDecode(response.body);
 
-        // Если бэкенд возвращает список, оборачиваем его в нужный формат
+        // Обрабатываем разные форматы ответа
         if (result is List) {
           return {'status': 'success', 'data': result};
-        } else {
-          // Если уже объект, возвращаем как есть
+        } else if (result is Map<String, dynamic>) {
           return result;
+        } else {
+          return {'status': 'success', 'data': []};
         }
       } else {
-        print('❌ Failed to get lobbies: ${response.body}');
         return {
           'status': 'error',
           'message': 'Failed to load lobbies: ${response.statusCode}',
         };
       }
     } catch (e) {
-      print('❌ Get lobbies error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
@@ -245,14 +251,10 @@ class ApiService {
 
   static Future<Map<String, dynamic>> joinLobby(String lobbyId) async {
     try {
-      print('🎮 Joining lobby: $lobbyId');
-
       final response = await http.post(
         Uri.parse('$baseUrl/lobbies/$lobbyId/join'),
         headers: _getHeaders(),
       );
-
-      print('📨 Join lobby response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -265,7 +267,6 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('❌ Join lobby error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
@@ -318,6 +319,44 @@ class ApiService {
     }
   }
 
+  // =========== COUNTDOWN SYNC ==========
+  static Future<Map<String, dynamic>> startCountdown(String lobbyId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/lobbies/$lobbyId/start_countdown'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return {'status': 'success', 'data': result};
+      } else {
+        final result = jsonDecode(response.body);
+        return {'status': 'error', 'message': result['detail'] ?? 'Ошибка'};
+      }
+    } catch (e) {
+      return {'status': 'error', 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCountdownStatus(String lobbyId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/lobbies/$lobbyId/countdown_status'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return {'status': 'success', 'data': result};
+      } else {
+        return {'status': 'error', 'message': 'Ошибка получения статуса'};
+      }
+    } catch (e) {
+      return {'status': 'error', 'message': 'Ошибка сети: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>> leaveLobby(String lobbyId) async {
     try {
       final response = await http.post(
@@ -336,7 +375,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      return {'status': 'error', 'message': e.toString()};
+      return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
 
@@ -366,6 +405,29 @@ class ApiService {
     }
   }
 
+  // =========== ПОИСК ПО КОДУ ===========
+  static Future<Map<String, dynamic>> searchLobbyByCode(String code) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/lobbies/search/${code.toUpperCase()}'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return {'status': 'success', 'data': result};
+      } else {
+        final result = jsonDecode(response.body);
+        return {
+          'status': 'error',
+          'message': result['detail'] ?? 'Лобби не найдено',
+        };
+      }
+    } catch (e) {
+      return {'status': 'error', 'message': 'Ошибка сети: $e'};
+    }
+  }
+
   // =========== ПОЛЬЗОВАТЕЛЬ ===========
   static Future<Map<String, dynamic>> getCurrentUser() async {
     try {
@@ -373,7 +435,7 @@ class ApiService {
         return {'status': 'error', 'message': 'Пользователь не авторизован'};
       }
 
-      // ИЗМЕНЕНИЕ: Используем данные из памяти
+      // Используем данные из памяти
       if (_currentUserData != null) {
         return {'status': 'success', 'data': _currentUserData};
       }
@@ -408,13 +470,11 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        // ИЗМЕНЕНИЕ: Возвращаем как есть, т.к. бэкенд уже возвращает {status, data}
         return result;
       } else {
         return {'status': 'error', 'message': 'Ошибка загрузки статистики'};
       }
     } catch (e) {
-      print('❌ Get user stats error: $e');
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
     }
   }
@@ -428,7 +488,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        // ИЗМЕНЕНИЕ: Возвращаем как есть
         return result;
       } else {
         return {'status': 'error', 'message': 'Ошибка загрузки игр'};
@@ -438,31 +497,7 @@ class ApiService {
     }
   }
 
-  // =========== ВЫХОД ===========
-  static void logout() {
-    _authToken = null;
-    _currentUserId = null;
-    _currentUserData = null;
-    print('👋 User logged out');
-  }
-
-  // =========== ВАЛИДАЦИЯ ТОКЕНА ===========
-  static Future<bool> validateToken() async {
-    if (_authToken == null) return false;
-
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/validate_token'),
-        headers: _getHeaders(),
-      );
-
-      final result = jsonDecode(response.body);
-      return result['status'] == 'success';
-    } catch (e) {
-      return false;
-    }
-  }
-
+  // =========== ЗАГРУЗКА ФОТО ===========
   static Future<Map<String, dynamic>> uploadPhoto(
     String lobbyId,
     File photoFile,
@@ -500,6 +535,31 @@ class ApiService {
       }
     } catch (e) {
       return {'status': 'error', 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // =========== ВЫХОД ===========
+  static void logout() {
+    _authToken = null;
+    _currentUserId = null;
+    _currentUserData = null;
+  }
+
+  // =========== ВАЛИДАЦИЯ ТОКЕНА ===========
+  static Future<bool> validateToken() async {
+    if (_authToken == null) return false;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/validate'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode != 200) return false;
+      final result = jsonDecode(response.body);
+      return result['status'] == 'success';
+    } catch (e) {
+      return false;
     }
   }
 }

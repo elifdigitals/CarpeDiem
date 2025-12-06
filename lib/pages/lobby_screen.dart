@@ -1,3 +1,6 @@
+// lib/pages/lobby_screen.dart
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'create_lobby_screen.dart';
 import 'profile_screen.dart';
@@ -15,24 +18,187 @@ class _LobbyScreenState extends State<LobbyScreen> {
   List<dynamic> _lobbies = [];
   bool _loading = true;
   String? _errorMessage;
+  final TextEditingController _searchController = TextEditingController();
+  bool _searching = false;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadLobbies();
+    _startAutoRefresh();
   }
 
-  Future<void> _loadLobbies() async {
+  void _startAutoRefresh() {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted && !_loading && !_searching) {
+        _loadLobbies(silent: true);
+      }
+    });
+  }
+
+  Future<void> _loadLobbies({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+      });
+    }
+
     final result = await ApiService.getLobbies();
     if (mounted) {
-      setState(() {
-        _loading = false;
-        if (result['status'] == 'success') {
+      if (result['status'] == 'success') {
+        setState(() {
           _lobbies = result['data'] ?? result;
+          _loading = false;
+        });
+      } else {
+        if (!silent) {
+          setState(() {
+            _errorMessage = result['message'];
+            _loading = false;
+          });
         } else {
-          _errorMessage = result['message'];
+          // silent: don't override UI loading state, but update data if available
+          if (result['data'] != null) {
+            setState(() => _lobbies = result['data']);
+          }
         }
+      }
+    }
+  }
+
+  Future<void> _searchLobbyByCode() async {
+    final code = _searchController.text.trim().toUpperCase();
+    if (code.isEmpty || code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Введите 6-значный код лобби'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _searching = true;
+    });
+
+    final result = await ApiService.searchLobbyByCode(code);
+
+    if (mounted) {
+      setState(() {
+        _searching = false;
       });
+
+      if (result['status'] == 'success') {
+        final lobby = result['data'];
+        _showLobbyDialog(lobby);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Лобби не найдено'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showLobbyDialog(Map<String, dynamic> lobby) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Лобби найдено: ${lobby['name']}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Код: ${lobby['code']}'),
+            Text('Режим: ${_getModeDisplayName(lobby['mode'])}'),
+            Text(
+                'Игроков: ${lobby['players_count'] ?? lobby['players'].length}'),
+            Text('Хост: ${lobby['host_username']}'),
+            const SizedBox(height: 16),
+            if (lobby['players'] != null)
+              Text(
+                'Игроки: ${lobby['players'].map((p) => p['username']).join(', ')}',
+                style: const TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _joinLobby(lobby['lobby_id'], lobby);
+            },
+            child: const Text('Присоединиться'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getModeDisplayName(String mode) {
+    switch (mode) {
+      case 'quick':
+        return 'Быстрый';
+      case 'family':
+        return 'Семейный';
+      case 'corporate':
+        return 'Корпоративный';
+      case 'weekly':
+        return 'Недельный';
+      default:
+        return mode;
+    }
+  }
+
+  Future<void> _joinLobby(
+      String lobbyId, Map<String, dynamic>? lobbyData) async {
+    if (lobbyId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка: ID лобби не найден')),
+      );
+      return;
+    }
+
+    final result = await ApiService.joinLobby(lobbyId);
+
+    if (result['status'] == 'success') {
+      if (!mounted) return;
+
+      // Переходим на экран активного лобби
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ActiveLobbyScreen(
+            lobbyId: lobbyId,
+            lobbyName: lobbyData?['name'] ?? 'Лобби',
+            mode: lobbyData?['mode'] ?? 'default',
+            timeLimit: lobbyData?['time_limit'] ?? 15,
+            isHost: false,
+          ),
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ ${result['message'] ?? 'Ошибка при присоединении'}',
+          ),
+        ),
+      );
+      // Если ошибка "уже в лобби", обновляем список
+      if (result['message']?.contains('already in this lobby') == true) {
+        _loadLobbies();
+      }
     }
   }
 
@@ -44,6 +210,22 @@ class _LobbyScreenState extends State<LobbyScreen> {
       });
     }
     _loadLobbies();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Список лобби обновлен'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -53,6 +235,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Header
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -93,8 +276,73 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ],
               ),
             ),
+
+            // Поисковая строка
             Container(
-              height: 200,
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Введите 6-значный код лобби',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF3F4F6),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        prefixIcon:
+                            const Icon(Icons.search, color: Color(0xFF6B7280)),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (value) => setState(() {}),
+                      onSubmitted: (value) => _searchLobbyByCode(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C3AED),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      onPressed: _searching ? null : _searchLobbyByCode,
+                      icon: _searching
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.search, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Карта (упрощенная версия)
+            Container(
+              height: 150,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFFD8C9FF), Color(0xFFBFA3FF)],
@@ -102,51 +350,35 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: Stack(
-                children: [
-                  const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.location_pin,
-                          color: Color(0xFF5B21B6),
-                          size: 60,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Интерактивная карта',
-                          style: TextStyle(color: Color(0xFF4C1D95)),
-                        ),
-                        Text(
-                          'Зона игры: Центр города',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6D28D9),
-                          ),
-                        ),
-                      ],
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.location_pin,
+                      color: Color(0xFF5B21B6),
+                      size: 60,
                     ),
-                  ),
-                  Positioned(
-                    top: 20,
-                    left: 30,
-                    child: _MapDot(color: const Color(0xFF8B5CF6)),
-                  ),
-                  Positioned(
-                    top: 70,
-                    right: 40,
-                    child: _MapDot(color: const Color(0xFF7C3AED)),
-                  ),
-                  Positioned(
-                    bottom: 20,
-                    left: 120,
-                    child: _MapDot(color: const Color(0xFFA78BFA)),
-                  ),
-                ],
+                    SizedBox(height: 8),
+                    Text(
+                      'Интерактивная карта',
+                      style: TextStyle(color: Color(0xFF4C1D95)),
+                    ),
+                    Text(
+                      'Зона игры: Центр города',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6D28D9),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // Кнопки действий
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -208,7 +440,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // Список лобби
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -232,10 +467,27 @@ class _LobbyScreenState extends State<LobbyScreen> {
                         )
                       : _lobbies.isEmpty
                           ? const Center(
-                              child: Text(
-                                'Нет активных лобби',
-                                style:
-                                    TextStyle(fontSize: 16, color: Colors.grey),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.group,
+                                      size: 64, color: Colors.grey),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Нет активных лобби',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Создайте свое или используйте поиск',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
                           : SingleChildScrollView(
@@ -253,7 +505,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  ..._lobbies.map((lobby) => _GameCard(lobby)),
+                                  ..._lobbies.map(
+                                      (lobby) => _GameCard(lobby, _joinLobby)),
                                 ],
                               ),
                             ),
@@ -267,7 +520,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
 class _GameCard extends StatefulWidget {
   final dynamic lobby;
-  const _GameCard(this.lobby);
+  final Function(String, Map<String, dynamic>?) onJoin;
+
+  const _GameCard(this.lobby, this.onJoin);
 
   @override
   State<_GameCard> createState() => _GameCardState();
@@ -276,67 +531,17 @@ class _GameCard extends StatefulWidget {
 class _GameCardState extends State<_GameCard> {
   bool _joining = false;
 
-  Future<void> _joinLobby() async {
-    final lobbyId = widget.lobby['lobby_id']?.toString();
-    if (lobbyId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка: ID лобби не найден')),
-        );
-      }
-      return;
-    }
-
-    setState(() => _joining = true);
-
-    try {
-      final result = await ApiService.joinLobby(lobbyId);
-
-      if (result['status'] == 'success') {
-        if (!mounted) return;
-
-        // Переходим на экран активного лобби
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ActiveLobbyScreen(
-              lobbyId: lobbyId,
-              lobbyName: widget.lobby['name'] ?? 'Лобби',
-              mode: widget.lobby['mode'] ?? 'default',
-              timeLimit: widget.lobby['time_limit'] ?? 15,
-              isHost: false,
-            ),
-          ),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ ${result['message'] ?? 'Ошибка при присоединении'}',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _joining = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final playersCount = (widget.lobby['players'] as List?)?.length ?? 0;
+    final playersCount = widget.lobby['players_count'] ??
+        (widget.lobby['players'] as List?)?.length ??
+        0;
     final lobbyName = widget.lobby['name'] ??
         'Лобби ${widget.lobby['lobby_id']?.toString().substring(0, 8) ?? 'Unknown'}';
-    final gameMode = widget.lobby['mode'] ?? 'default';
-    final hostId = widget.lobby['host'] ?? 'Unknown';
+    final hostUsername = widget.lobby['host_username'] ??
+        widget.lobby['host_id']?.toString() ??
+        'Unknown';
+    final lobbyCode = widget.lobby['code'] ?? '';
 
     return Card(
       elevation: 3,
@@ -352,31 +557,36 @@ class _GameCardState extends State<_GameCard> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        lobbyName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          lobbyName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 2,
-                          horizontal: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDE9FE),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _getModeDisplayName(gameMode),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF5B21B6),
+                      if (lobbyCode.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 2,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDE9FE),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            lobbyCode,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5B21B6),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -392,16 +602,29 @@ class _GameCardState extends State<_GameCard> {
                       const Icon(Icons.person, size: 16, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text(
-                        'Хост: $hostId',
+                        'Хост: $hostUsername',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  // Показываем готовых игроков
+                  if (widget.lobby['players'] != null)
+                    _buildPlayersReadyStatus(widget.lobby['players']),
                 ],
               ),
             ),
             ElevatedButton(
-              onPressed: _joining ? null : _joinLobby,
+              onPressed: _joining
+                  ? null
+                  : () async {
+                      setState(() => _joining = true);
+                      await widget.onJoin(
+                          widget.lobby['lobby_id'], widget.lobby);
+                      if (mounted) {
+                        setState(() => _joining = false);
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
                 disabledBackgroundColor: Colors.grey,
@@ -425,37 +648,29 @@ class _GameCardState extends State<_GameCard> {
     );
   }
 
-  String _getModeDisplayName(String mode) {
-    switch (mode) {
-      case 'quick':
-        return 'Быстрый';
-      case 'family':
-        return 'Семейный';
-      case 'corporate':
-        return 'Корпоративный';
-      case 'weekly':
-        return 'Недельный';
-      default:
-        return mode;
-    }
-  }
-}
+  Widget _buildPlayersReadyStatus(List<dynamic> players) {
+    final readyCount = players.where((p) => p['is_ready'] == true).length;
+    final totalCount = players.length;
 
-class _MapDot extends StatelessWidget {
-  final Color color;
-  const _MapDot({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(seconds: 1),
-      curve: Curves.easeInOut,
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: readyCount == totalCount ? Colors.green : Colors.orange,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$readyCount/$totalCount готовы',
+          style: TextStyle(
+            fontSize: 12,
+            color: readyCount == totalCount ? Colors.green : Colors.orange,
+          ),
+        ),
+      ],
     );
   }
 }

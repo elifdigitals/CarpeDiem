@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'pages/welcome_screen.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiService.init(); // Load saved session before starting the app
   runApp(const MyApp());
 }
 
