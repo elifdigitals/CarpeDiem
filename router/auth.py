@@ -142,3 +142,9 @@ async def read_current_user(current_user: models.User = Depends(get_current_user
             "email": current_user.email
         }
     }
+
+
+@router.get("/validate")
+async def validate_token(current_user: models.User = Depends(get_current_user)):
+    """Validate current token and return user id if valid."""
+    return {"status": "success", "user_id": current_user.id}
